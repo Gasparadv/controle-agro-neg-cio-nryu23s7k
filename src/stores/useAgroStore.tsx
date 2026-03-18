@@ -4,6 +4,7 @@ import { Transaction } from '@/types'
 interface AgroStoreContextType {
   transactions: Transaction[]
   addTransaction: (tx: Transaction) => void
+  addTransactions: (txs: Transaction[]) => void
   updateTransaction: (tx: Transaction) => void
 }
 
@@ -48,26 +49,6 @@ const initialTransactions: Transaction[] = [
     comments: 'Troca de óleo e pneus',
     crop: 'Geral',
   },
-  {
-    id: '5',
-    date: '2023-08-05',
-    description: 'Adiantamento Cana',
-    amount: 80000,
-    type: 'receita',
-    category: 'Venda',
-    comments: 'Usina',
-    crop: 'Cana',
-  },
-  {
-    id: '6',
-    date: '2023-11-20',
-    description: 'Mão de Obra Colheita',
-    amount: 12000,
-    type: 'despesa',
-    category: 'Mão de Obra',
-    comments: 'Equipe terceirizada',
-    crop: 'Milho',
-  },
 ]
 
 const AgroStoreContext = createContext<AgroStoreContextType | undefined>(undefined)
@@ -79,12 +60,18 @@ export function AgroProvider({ children }: { children: React.ReactNode }) {
     setTransactions((prev) => [tx, ...prev])
   }
 
+  const addTransactions = (txs: Transaction[]) => {
+    setTransactions((prev) => [...txs, ...prev])
+  }
+
   const updateTransaction = (tx: Transaction) => {
     setTransactions((prev) => prev.map((item) => (item.id === tx.id ? tx : item)))
   }
 
   return (
-    <AgroStoreContext.Provider value={{ transactions, addTransaction, updateTransaction }}>
+    <AgroStoreContext.Provider
+      value={{ transactions, addTransaction, addTransactions, updateTransaction }}
+    >
       {children}
     </AgroStoreContext.Provider>
   )

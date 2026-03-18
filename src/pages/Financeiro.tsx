@@ -10,17 +10,17 @@ import {
 } from '@/components/ui/select'
 import { TransactionTable } from '@/components/financeiro/TransactionTable'
 import { TransactionSheet } from '@/components/financeiro/TransactionSheet'
+import { CsvImportModal } from '@/components/financeiro/CsvImportModal'
 import useAgroStore from '@/stores/useAgroStore'
 import { Transaction } from '@/types'
-import { useToast } from '@/hooks/use-toast'
 
 export default function Financeiro() {
-  const { transactions, updateTransaction, addTransaction } = useAgroStore()
-  const { toast } = useToast()
+  const { transactions, updateTransaction } = useAgroStore()
 
   const [filterCrop, setFilterCrop] = useState<string>('Todos')
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null)
   const [isSheetOpen, setIsSheetOpen] = useState(false)
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false)
 
   const filteredTransactions = transactions.filter(
     (t) => filterCrop === 'Todos' || t.crop === filterCrop,
@@ -29,26 +29,6 @@ export default function Financeiro() {
   const handleRowClick = (tx: Transaction) => {
     setSelectedTx(tx)
     setIsSheetOpen(true)
-  }
-
-  const handleSimulateImport = () => {
-    const mockImports: Transaction[] = [
-      {
-        id: Math.random().toString(),
-        date: new Date().toISOString().split('T')[0],
-        description: 'Posto Ipiranga - Diesel',
-        amount: 3200,
-        type: 'despesa',
-        category: 'Outros',
-        comments: '',
-        crop: 'Geral',
-      },
-    ]
-    mockImports.forEach(addTransaction)
-    toast({
-      title: 'Extrato Importado',
-      description: '1 nova transação foi identificada e adicionada à lista.',
-    })
   }
 
   return (
@@ -68,7 +48,7 @@ export default function Financeiro() {
             </SelectContent>
           </Select>
         </div>
-        <Button onClick={handleSimulateImport} variant="secondary" className="gap-2">
+        <Button onClick={() => setIsImportModalOpen(true)} variant="secondary" className="gap-2">
           <Upload className="h-4 w-4" />
           Importar Extrato (CSV)
         </Button>
@@ -82,6 +62,8 @@ export default function Financeiro() {
         onOpenChange={setIsSheetOpen}
         onSave={updateTransaction}
       />
+
+      <CsvImportModal open={isImportModalOpen} onOpenChange={setIsImportModalOpen} />
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Wallet, Sprout, PieChart, Plus } from 'lucide-react'
+import { LayoutDashboard, Wallet, Sprout, PieChart, Boxes, FileText, Plus } from 'lucide-react'
 import {
   SidebarProvider,
   Sidebar,
@@ -14,18 +14,23 @@ import {
 } from '@/components/ui/sidebar'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
+import { NotificationBell } from './notifications/NotificationBell'
 
 const navItems = [
   { name: 'Visão Geral', path: '/', icon: LayoutDashboard },
   { name: 'Financeiro', path: '/financeiro', icon: Wallet },
+  { name: 'Estoque', path: '/estoque', icon: Boxes },
   { name: 'Culturas', path: '/culturas', icon: Sprout },
+  { name: 'Notas Fiscais', path: '/notas-fiscais', icon: FileText },
   { name: 'Relatórios', path: '/relatorios', icon: PieChart },
 ]
 
 const titleMap: Record<string, string> = {
   '/': 'Visão Geral',
   '/financeiro': 'Controle Financeiro',
+  '/estoque': 'Estoque de Insumos',
   '/culturas': 'Gestão de Culturas',
+  '/notas-fiscais': 'Notas Fiscais',
   '/relatorios': 'Relatórios Gerenciais',
 }
 
@@ -78,10 +83,11 @@ export function Layout() {
               <SidebarTrigger />
               <h1 className="text-lg font-semibold md:text-xl">{pageTitle}</h1>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 md:gap-4">
               <div className="hidden text-sm font-medium text-muted-foreground md:block">
                 Fazenda Boa Vista
               </div>
+              <NotificationBell />
               <Button onClick={handleQuickAdd} size="sm" className="gap-2">
                 <Plus className="h-4 w-4" />
                 <span className="hidden sm:inline">Lançamento</span>
