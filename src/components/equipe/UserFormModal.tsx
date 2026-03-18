@@ -35,7 +35,7 @@ const formSchema = z.object({
   name: z.string().min(2, 'O nome deve ter pelo menos 2 caracteres'),
   email: z.string().email('Formato de e-mail inválido'),
   password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres'),
-  role: z.enum(['owner', 'collaborator']),
+  role: z.enum(['owner', 'manager', 'senior', 'collaborator']),
 })
 
 type FormValues = z.infer<typeof formSchema>
@@ -109,7 +109,7 @@ export function UserFormModal({ open, onOpenChange, userToEdit }: UserFormModalP
         <DialogHeader>
           <DialogTitle>{userToEdit ? 'Editar Colaborador' : 'Novo Colaborador'}</DialogTitle>
           <DialogDescription>
-            Preencha os dados do membro da equipe e defina seu perfil de acesso.
+            Preencha os dados do membro da equipe e defina seu nível de acesso.
           </DialogDescription>
         </DialogHeader>
 
@@ -162,18 +162,18 @@ export function UserFormModal({ open, onOpenChange, userToEdit }: UserFormModalP
               name="role"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Perfil de Acesso</FormLabel>
+                  <FormLabel>Nível de Acesso</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Selecione um perfil" />
+                        <SelectValue placeholder="Selecione um nível" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="owner">Proprietário (Acesso Total)</SelectItem>
-                      <SelectItem value="collaborator">
-                        Assistente (Lançamentos p/ Aprovação)
-                      </SelectItem>
+                      <SelectItem value="owner">Proprietário</SelectItem>
+                      <SelectItem value="manager">Gestor Master</SelectItem>
+                      <SelectItem value="senior">Pleno</SelectItem>
+                      <SelectItem value="collaborator">Colaborador</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />

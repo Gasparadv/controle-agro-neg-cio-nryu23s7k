@@ -15,7 +15,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import useTeamStore from '@/stores/useTeamStore'
 import useAuthStore from '@/stores/useAuthStore'
 import { UserFormModal } from '@/components/equipe/UserFormModal'
-import { User } from '@/types'
+import { User, Role } from '@/types'
 import { useToast } from '@/hooks/use-toast'
 
 export default function Equipe() {
@@ -56,13 +56,40 @@ export default function Equipe() {
     })
   }
 
+  const renderRoleBadge = (userRole: Role) => {
+    switch (userRole) {
+      case 'owner':
+        return (
+          <Badge variant="default" className="gap-1 bg-blue-600 hover:bg-blue-700">
+            <ShieldAlert className="h-3 w-3" /> Proprietário
+          </Badge>
+        )
+      case 'manager':
+        return (
+          <Badge variant="default" className="bg-purple-600 hover:bg-purple-700">
+            Gestor Master
+          </Badge>
+        )
+      case 'senior':
+        return (
+          <Badge variant="default" className="bg-emerald-600 hover:bg-emerald-700">
+            Pleno
+          </Badge>
+        )
+      case 'collaborator':
+      default:
+        return <Badge variant="secondary">Colaborador</Badge>
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex flex-col gap-1">
           <h2 className="text-2xl font-bold tracking-tight">Gerenciamento de Equipe</h2>
           <p className="text-muted-foreground text-sm">
-            Cadastre colaboradores, defina perfis e controle acessos aos módulos financeiros.
+            Cadastre colaboradores, defina níveis de acesso e controle permissões aos módulos
+            financeiros.
           </p>
         </div>
         <Button onClick={handleAdd} className="gap-2">
@@ -77,7 +104,7 @@ export default function Equipe() {
             <TableRow className="bg-muted/50">
               <TableHead>Nome</TableHead>
               <TableHead>E-mail</TableHead>
-              <TableHead>Perfil</TableHead>
+              <TableHead>Nível de Acesso</TableHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
@@ -86,15 +113,7 @@ export default function Equipe() {
               <TableRow key={u.id}>
                 <TableCell className="font-medium">{u.name}</TableCell>
                 <TableCell>{u.email}</TableCell>
-                <TableCell>
-                  {u.role === 'owner' ? (
-                    <Badge variant="default" className="gap-1 bg-blue-600 hover:bg-blue-700">
-                      <ShieldAlert className="h-3 w-3" /> Proprietário
-                    </Badge>
-                  ) : (
-                    <Badge variant="secondary">Assistente</Badge>
-                  )}
-                </TableCell>
+                <TableCell>{renderRoleBadge(u.role)}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
                     <Button variant="ghost" size="icon" onClick={() => handleEdit(u)}>
@@ -125,13 +144,7 @@ export default function Equipe() {
                   <h4 className="font-semibold">{u.name}</h4>
                   <p className="text-sm text-muted-foreground">{u.email}</p>
                 </div>
-                {u.role === 'owner' ? (
-                  <Badge variant="default" className="bg-blue-600">
-                    Proprietário
-                  </Badge>
-                ) : (
-                  <Badge variant="secondary">Assistente</Badge>
-                )}
+                {renderRoleBadge(u.role)}
               </div>
               <div className="flex gap-2 pt-2 border-t justify-end">
                 <Button variant="outline" size="sm" onClick={() => handleEdit(u)}>
