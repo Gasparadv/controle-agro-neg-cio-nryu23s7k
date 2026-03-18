@@ -1,25 +1,26 @@
 import React, { createContext, useContext, useState } from 'react'
-import { Role } from '@/types'
+import { Role, User } from '@/types'
+import useTeamStore from './useTeamStore'
 
 interface AuthStoreContextType {
+  user: User | null
   role: Role
-  toggleRole: () => void
   userName: string
+  setActiveUser: (id: string) => void
 }
 
 const AuthStoreContext = createContext<AuthStoreContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [role, setRole] = useState<Role>('owner')
+  const { users } = useTeamStore()
+  const [activeUserId, setActiveUserId] = useState<string>('u1')
 
-  const toggleRole = () => {
-    setRole((prev) => (prev === 'owner' ? 'collaborator' : 'owner'))
-  }
-
-  const userName = role === 'owner' ? 'João Proprietário' : 'Carlos Assistente'
+  const user = users.find((u) => u.id === activeUserId) || users[0] || null
+  const role = user?.role || 'owner'
+  const userName = user?.name || 'Desconhecido'
 
   return (
-    <AuthStoreContext.Provider value={{ role, toggleRole, userName }}>
+    <AuthStoreContext.Provider value={{ user, role, userName, setActiveUser: setActiveUserId }}>
       {children}
     </AuthStoreContext.Provider>
   )

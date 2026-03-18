@@ -10,6 +10,7 @@ import {
   Plus,
   Map as MapIcon,
   CheckSquare,
+  Users,
 } from 'lucide-react'
 import {
   SidebarProvider,
@@ -24,13 +25,20 @@ import {
   SidebarTrigger,
 } from '@/components/ui/sidebar'
 import { Button } from '@/components/ui/button'
-import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { NotificationBell } from './notifications/NotificationBell'
 import { QuickAddModal } from './financeiro/QuickAddModal'
 import useAuthStore from '@/stores/useAuthStore'
 import useAgroStore from '@/stores/useAgroStore'
+import useTeamStore from '@/stores/useTeamStore'
 
 const titleMap: Record<string, string> = {
   '/': 'Visão Geral',
@@ -41,11 +49,13 @@ const titleMap: Record<string, string> = {
   '/relatorios': 'Relatórios Gerenciais',
   '/mapa': 'Mapa da Fazenda',
   '/aprovacoes': 'Aprovações Pendentes',
+  '/equipe': 'Gerenciamento de Equipe',
 }
 
 export function Layout() {
   const location = useLocation()
-  const { role, toggleRole, userName } = useAuthStore()
+  const { user, setActiveUser, role, userName } = useAuthStore()
+  const { users } = useTeamStore()
   const { transactions } = useAgroStore()
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false)
 
@@ -65,6 +75,7 @@ export function Layout() {
 
   if (role === 'owner') {
     navItems.push({ name: 'Aprovações', path: '/aprovacoes', icon: CheckSquare })
+    navItems.push({ name: 'Equipe', path: '/equipe', icon: Users })
   }
 
   return (
@@ -116,25 +127,32 @@ export function Layout() {
               <h1 className="text-lg font-semibold md:text-xl">{pageTitle}</h1>
             </div>
             <div className="flex items-center gap-2 md:gap-4">
-              <div className="flex items-center gap-2 border-r pr-4 mr-2">
-                <Label
-                  htmlFor="role-toggle"
-                  className="text-xs font-medium cursor-pointer flex flex-col items-end"
-                >
-                  <span className="text-muted-foreground">Perfil Ativo</span>
-                  <span className={role === 'owner' ? 'text-primary' : 'text-yellow-600'}>
-                    {userName}
-                  </span>
+              <div className="flex items-center gap-3 border-r pr-4 mr-2">
+                <Label className="text-xs font-medium text-muted-foreground hidden sm:block">
+                  Atuando como:
                 </Label>
-                <Switch
-                  id="role-toggle"
-                  checked={role === 'collaborator'}
-                  onCheckedChange={toggleRole}
-                  className="data-[state=checked]:bg-yellow-600"
-                />
+                <Select value={user?.id} onValueChange={setActiveUser}>
+                  <SelectTrigger className="w-[180px] h-8 bg-muted/50 border-none">
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent align="end">
+                    {users.map((u) => (
+                      <SelectItem key={u.id} value={u.id}>
+                        <div className="flex items-center gap-2">
+                          <span className={u.role === 'owner' ? 'text-primary' : 'text-yellow-600'}>
+                            {u.name}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            ({u.role === 'owner' ? 'Prop.' : 'Assist.'})
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
-              <div className="hidden text-sm font-medium text-muted-foreground md:block">
+              <div className="hidden text-sm font-medium text-muted-foreground lg:block">
                 Fazenda Boa Vista
               </div>
               <NotificationBell />

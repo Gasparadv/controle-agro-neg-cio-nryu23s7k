@@ -6,6 +6,14 @@ export type TransactionStatus = 'pending' | 'approved' | 'rejected'
 
 export type Role = 'owner' | 'collaborator'
 
+export interface User {
+  id: string
+  name: string
+  email: string
+  password?: string
+  role: Role
+}
+
 export interface Transaction {
   id: string
   date: string
