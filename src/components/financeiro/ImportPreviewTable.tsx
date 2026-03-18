@@ -73,6 +73,7 @@ export function ImportPreviewTable({ preview, onCategoryChange }: ImportPreviewT
                       <SelectItem value="Insumos">Insumos</SelectItem>
                       <SelectItem value="Manutenção">Manutenção</SelectItem>
                       <SelectItem value="Mão de Obra">Mão de Obra</SelectItem>
+                      <SelectItem value="Combustível">Combustível</SelectItem>
                       <SelectItem value="Venda">Venda</SelectItem>
                       <SelectItem value="Outros">Outros</SelectItem>
                     </SelectContent>

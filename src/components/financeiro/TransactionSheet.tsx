@@ -81,6 +81,7 @@ export function TransactionSheet({
                 <SelectItem value="Insumos">Insumos</SelectItem>
                 <SelectItem value="Manutenção">Manutenção</SelectItem>
                 <SelectItem value="Mão de Obra">Mão de Obra</SelectItem>
+                <SelectItem value="Combustível">Combustível</SelectItem>
                 <SelectItem value="Venda">Venda (Receita)</SelectItem>
                 <SelectItem value="Outros">Outros</SelectItem>
               </SelectContent>

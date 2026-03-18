@@ -37,7 +37,8 @@ export function FileImportModal({
   const [fileName, setFileName] = useState('')
   const [workbook, setWorkbook] = useState<XLSX.WorkBook | null>(null)
   const [selectedSheet, setSelectedSheet] = useState<string>('')
-  const [mapping, setMapping] = useState({ date: '0', desc: '1', amount: '2', cat: '3' })
+  // Default mapping based on standard Excel layout: Date -> Col A(0), Desc -> Col C(2), Value -> Col E(4)
+  const [mapping, setMapping] = useState({ date: '0', desc: '2', amount: '4', cat: '3' })
   const [preview, setPreview] = useState<PreviewRow[]>([])
 
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -120,10 +121,9 @@ export function FileImportModal({
       let cat = row[parseInt(mapping.cat)] || ''
 
       const d = desc.toLowerCase()
-      if (
-        d.includes('posto') ||
-        d.includes('combustível') ||
-        d.includes('diesel') ||
+      if (d.includes('posto') || d.includes('combustível') || d.includes('diesel')) {
+        cat = 'Combustível'
+      } else if (
         d.includes('oficina') ||
         d.includes('trator') ||
         d.includes('manutenção') ||
@@ -307,9 +307,9 @@ export function FileImportModal({
               </p>
             </div>
             {Object.entries({
-              date: 'Data',
-              desc: 'Descrição',
-              amount: 'Valor',
+              date: 'Data (Ex: Coluna A)',
+              desc: 'Descrição (Ex: Coluna C)',
+              amount: 'Valor (Ex: Coluna E)',
               cat: 'Categoria',
             }).map(([k, l]) => (
               <div key={k} className="grid grid-cols-4 items-center gap-4">
