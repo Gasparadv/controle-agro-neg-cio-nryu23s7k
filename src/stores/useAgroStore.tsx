@@ -6,6 +6,8 @@ interface AgroStoreContextType {
   addTransaction: (tx: Transaction) => void
   addTransactions: (txs: Transaction[]) => void
   updateTransaction: (tx: Transaction) => void
+  approveTransaction: (id: string) => void
+  rejectTransaction: (id: string, reason: string) => void
 }
 
 const initialTransactions: Transaction[] = [
@@ -18,6 +20,7 @@ const initialTransactions: Transaction[] = [
     category: 'Insumos',
     comments: 'Para o talhão 1',
     crop: 'Soja',
+    status: 'approved',
   },
   {
     id: '2',
@@ -28,6 +31,7 @@ const initialTransactions: Transaction[] = [
     category: 'Insumos',
     comments: '',
     crop: 'Soja',
+    status: 'approved',
   },
   {
     id: '3',
@@ -38,6 +42,7 @@ const initialTransactions: Transaction[] = [
     category: 'Venda',
     comments: 'Cargill',
     crop: 'Soja',
+    status: 'approved',
   },
   {
     id: '4',
@@ -48,6 +53,7 @@ const initialTransactions: Transaction[] = [
     category: 'Manutenção',
     comments: 'Troca de óleo e pneus',
     crop: 'Geral',
+    status: 'approved',
   },
 ]
 
@@ -68,9 +74,32 @@ export function AgroProvider({ children }: { children: React.ReactNode }) {
     setTransactions((prev) => prev.map((item) => (item.id === tx.id ? tx : item)))
   }
 
+  const approveTransaction = (id: string) => {
+    setTransactions((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, status: 'approved', rejectionReason: undefined } : item,
+      ),
+    )
+  }
+
+  const rejectTransaction = (id: string, reason: string) => {
+    setTransactions((prev) =>
+      prev.map((item) =>
+        item.id === id ? { ...item, status: 'rejected', rejectionReason: reason } : item,
+      ),
+    )
+  }
+
   return (
     <AgroStoreContext.Provider
-      value={{ transactions, addTransaction, addTransactions, updateTransaction }}
+      value={{
+        transactions,
+        addTransaction,
+        addTransactions,
+        updateTransaction,
+        approveTransaction,
+        rejectTransaction,
+      }}
     >
       {children}
     </AgroStoreContext.Provider>

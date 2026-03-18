@@ -2,6 +2,10 @@ export type TransactionType = 'receita' | 'despesa'
 
 export type CropType = 'Soja' | 'Milho' | 'Cana' | 'Geral'
 
+export type TransactionStatus = 'pending' | 'approved' | 'rejected'
+
+export type Role = 'owner' | 'collaborator'
+
 export interface Transaction {
   id: string
   date: string
@@ -11,6 +15,9 @@ export interface Transaction {
   category: string
   comments: string
   crop: CropType
+  status?: TransactionStatus
+  rejectionReason?: string
+  collaboratorName?: string
 }
 
 export type InventoryType = 'Semente' | 'Fertilizante' | 'Defensivo' | 'Outros'
@@ -37,4 +44,27 @@ export interface Invoice {
   fiscalYear: number
   includedInIr: boolean
   fileName?: string
+}
+
+export interface FarmPlotHistory {
+  year: number
+  crop: CropType
+  yield: number
+  unit: string
+}
+
+export interface FarmPlotInput {
+  name: string
+  quantity: number
+  unit: string
+}
+
+export interface FarmPlot {
+  id: string
+  name: string
+  size: number // in hectares
+  currentCrop: CropType
+  status: 'planting' | 'growing' | 'harvesting' | 'idle'
+  history: FarmPlotHistory[]
+  inputsUsed: FarmPlotInput[]
 }

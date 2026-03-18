@@ -9,6 +9,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { formatBRL, formatDate } from '@/lib/format'
 import { Transaction } from '@/types'
+import { Clock, CheckCircle2, XCircle } from 'lucide-react'
 
 interface TransactionTableProps {
   transactions: Transaction[]
@@ -16,6 +17,33 @@ interface TransactionTableProps {
 }
 
 export function TransactionTable({ transactions, onSelect }: TransactionTableProps) {
+  const getStatusBadge = (status?: string) => {
+    switch (status) {
+      case 'pending':
+        return (
+          <Badge
+            variant="outline"
+            className="bg-yellow-100 text-yellow-800 border-yellow-300 gap-1"
+          >
+            <Clock className="h-3 w-3" /> Pendente
+          </Badge>
+        )
+      case 'rejected':
+        return (
+          <Badge variant="outline" className="bg-red-100 text-red-800 border-red-300 gap-1">
+            <XCircle className="h-3 w-3" /> Rejeitado
+          </Badge>
+        )
+      case 'approved':
+      default:
+        return (
+          <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300 gap-1">
+            <CheckCircle2 className="h-3 w-3" /> Aprovado
+          </Badge>
+        )
+    }
+  }
+
   return (
     <div className="rounded-md border bg-card shadow-subtle overflow-hidden">
       <Table>
@@ -23,7 +51,7 @@ export function TransactionTable({ transactions, onSelect }: TransactionTablePro
           <TableRow className="bg-muted/50">
             <TableHead className="w-[100px]">Data</TableHead>
             <TableHead>Descrição</TableHead>
-            <TableHead>Categoria</TableHead>
+            <TableHead>Categoria / Status</TableHead>
             <TableHead>Cultura</TableHead>
             <TableHead className="text-right">Valor</TableHead>
             <TableHead className="hidden md:table-cell">Comentários</TableHead>
@@ -34,14 +62,24 @@ export function TransactionTable({ transactions, onSelect }: TransactionTablePro
             <TableRow
               key={tx.id}
               onClick={() => onSelect(tx)}
-              className="cursor-pointer hover:bg-muted/60 transition-colors"
+              className={`cursor-pointer hover:bg-muted/60 transition-colors ${tx.status === 'rejected' ? 'opacity-60' : ''}`}
             >
               <TableCell className="font-medium whitespace-nowrap">{formatDate(tx.date)}</TableCell>
-              <TableCell>{tx.description}</TableCell>
               <TableCell>
-                <Badge variant="outline" className="font-normal">
-                  {tx.category}
-                </Badge>
+                <div className="font-medium">{tx.description}</div>
+                {tx.status === 'rejected' && tx.rejectionReason && (
+                  <div className="text-xs text-destructive mt-1">
+                    Motivo recusa: {tx.rejectionReason}
+                  </div>
+                )}
+              </TableCell>
+              <TableCell>
+                <div className="flex flex-col items-start gap-1">
+                  <Badge variant="outline" className="font-normal border-muted-foreground/30">
+                    {tx.category}
+                  </Badge>
+                  {getStatusBadge(tx.status)}
+                </div>
               </TableCell>
               <TableCell>{tx.crop}</TableCell>
               <TableCell className="text-right whitespace-nowrap">
