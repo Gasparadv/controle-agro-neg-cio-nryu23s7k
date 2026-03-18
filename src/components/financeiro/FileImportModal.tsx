@@ -32,13 +32,10 @@ export function FileImportModal({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
-  const [fileData, setFileData] = useState<string[][]>([])
+  const [step, setStep] = useState<1 | 2 | 3>(1)
   const [fileName, setFileName] = useState('')
   const [workbook, setWorkbook] = useState<XLSX.WorkBook | null>(null)
   const [selectedSheet, setSelectedSheet] = useState<string>('')
-  // Default mapping based on standard Excel layout: Date -> Col A(0), Desc -> Col C(2), Value -> Col E(4)
-  const [mapping, setMapping] = useState({ date: '0', desc: '2', amount: '4', cat: '3' })
   const [preview, setPreview] = useState<PreviewRow[]>([])
 
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -47,78 +44,27 @@ export function FileImportModal({
   const { role, userName } = useAuthStore()
   const { toast } = useToast()
 
-  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setFileName(file.name)
-
-    if (file.name.toLowerCase().endsWith('.csv')) {
-      const reader = new FileReader()
-      reader.onload = (ev) => {
-        const rows = parseCsvFile(ev.target?.result as string)
-        if (rows.length > 1) {
-          setFileData(rows)
-          setStep(3)
-        } else
-          toast({ variant: 'destructive', title: 'Erro', description: 'CSV vazio ou inválido.' })
-      }
-      reader.readAsText(file)
-    } else if (file.name.match(/\.(xlsx|xls)$/i)) {
-      try {
-        const wb = await readExcelFile(file)
-        if (!wb.SheetNames.length) throw new Error('Empty')
-        setWorkbook(wb)
-        if (wb.SheetNames.length > 1) {
-          setSelectedSheet(wb.SheetNames[0])
-          setStep(2)
-        } else processSheet(wb, wb.SheetNames[0])
-      } catch {
-        toast({
-          variant: 'destructive',
-          title: 'Erro',
-          description: 'Erro ao ler arquivo. Arquivo corrompido ou protegido por senha.',
-        })
-      }
-    } else {
-      toast({ variant: 'destructive', title: 'Erro', description: 'Formato não suportado.' })
-    }
-  }
-
-  const processSheet = (wb: XLSX.WorkBook, sheetName: string) => {
-    const rows = getSheetData(wb, sheetName)
-    if (rows.length > 1) {
-      setFileData(rows)
-      setStep(3)
-    } else {
-      toast({
-        variant: 'destructive',
-        title: 'Erro',
-        description: 'A planilha selecionada está vazia ou é inválida.',
-      })
-      setStep(1)
-    }
-  }
-
-  const validate = () => {
-    let valid = true
+  const validateAndPreview = (data: string[][]) => {
+    const validRows = data.filter((r) => r.some((c) => c.trim() !== ''))
     const p: PreviewRow[] = []
-    const validRows = fileData.slice(1).filter((r) => r.some((c) => c.trim() !== ''))
 
     for (let i = 0; i < validRows.length; i++) {
       const row = validRows[i]
-      const rawAmt = row[parseInt(mapping.amount)]
-      const rawDate = row[parseInt(mapping.date)]
+      const rawDate = row[0] // Col A
+      const rawDesc = row[2] || '' // Col C
+      const rawAmt = row[4] // Col E
+
+      if (!rawDate && !rawAmt) continue
+
+      const dateStr = parseDate(rawDate)
+      const isDateValid = /^\d{4}-\d{2}-\d{2}$/.test(dateStr)
+      if (!isDateValid) continue
+
       const parsedAmt = parseAmount(rawAmt)
+      if (parsedAmt === 0 && !String(rawAmt).includes('0')) continue
 
-      if (i < 5) {
-        if (rawAmt && isNaN(parsedAmt)) valid = false
-        if (!rawDate || rawDate.length < 4) valid = false
-      }
-
-      if (!rawDate || rawDate.length < 4 || isNaN(parsedAmt)) continue
-
-      const desc = row[parseInt(mapping.desc)] || ''
-      let cat = row[parseInt(mapping.cat)] || ''
+      const desc = rawDesc.trim()
+      let cat = ''
 
       const d = desc.toLowerCase()
       if (d.includes('posto') || d.includes('combustível') || d.includes('diesel')) {
@@ -155,13 +101,13 @@ export function FileImportModal({
         d.includes('milho')
       ) {
         cat = 'Venda'
-      } else if (!cat) {
+      } else {
         cat = 'Outros'
       }
 
-      const dateStr = parseDate(rawDate)
+      const type = parsedAmt < 0 ? 'despesa' : 'receita'
       const isDup = transactions.some(
-        (tx) => tx.date === dateStr && tx.amount === Math.abs(parsedAmt),
+        (tx) => tx.date === dateStr && tx.amount === Math.abs(parsedAmt) && tx.type === type,
       )
 
       p.push({
@@ -174,15 +120,69 @@ export function FileImportModal({
       })
     }
 
-    if (!valid || p.length === 0) {
-      return toast({
+    if (p.length === 0) {
+      toast({
         variant: 'destructive',
-        title: 'Mapeamento Inválido',
-        description: 'Verifique se as colunas de Valor (numérico) e Data estão corretas.',
+        title: 'Formato Inválido',
+        description:
+          'O arquivo não contém dados válidos nas colunas A (Data), C (Descrição) e E (Valor).',
       })
+      setStep(1)
+      return
     }
+
     setPreview(p)
-    setStep(4)
+    setStep(3)
+  }
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setFileName(file.name)
+
+    if (file.name.toLowerCase().endsWith('.csv')) {
+      const reader = new FileReader()
+      reader.onload = (ev) => {
+        const rows = parseCsvFile(ev.target?.result as string)
+        if (rows.length > 1) {
+          validateAndPreview(rows)
+        } else
+          toast({ variant: 'destructive', title: 'Erro', description: 'CSV vazio ou inválido.' })
+      }
+      reader.readAsText(file)
+    } else if (file.name.match(/\.(xlsx|xls)$/i)) {
+      try {
+        const wb = await readExcelFile(file)
+        if (!wb.SheetNames.length) throw new Error('Empty')
+        setWorkbook(wb)
+        if (wb.SheetNames.length > 1) {
+          setSelectedSheet(wb.SheetNames[0])
+          setStep(2)
+        } else processSheet(wb, wb.SheetNames[0])
+      } catch {
+        toast({
+          variant: 'destructive',
+          title: 'Erro',
+          description: 'Erro ao ler arquivo. Arquivo corrompido ou protegido por senha.',
+        })
+      }
+    } else {
+      toast({ variant: 'destructive', title: 'Erro', description: 'Formato não suportado.' })
+    }
+  }
+
+  const processSheet = (wb: XLSX.WorkBook, sheetName: string) => {
+    const rows = getSheetData(wb, sheetName)
+    if (rows.length > 1) {
+      validateAndPreview(rows)
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'Erro',
+        description: 'A planilha selecionada está vazia ou é inválida.',
+      })
+      setStep(1)
+    }
   }
 
   const handleImport = () => {
@@ -208,11 +208,13 @@ export function FileImportModal({
     })
 
     if (!txs.length) {
-      return toast({
+      toast({
         variant: 'destructive',
         title: 'Aviso',
         description: 'Nenhum lançamento válido encontrado (todos duplicados ou vazios).',
       })
+      handleClose()
+      return
     }
 
     addTransactions(txs)
@@ -228,7 +230,6 @@ export function FileImportModal({
 
   const handleClose = () => {
     setStep(1)
-    setFileData([])
     setFileName('')
     setWorkbook(null)
     setSelectedSheet('')
@@ -253,8 +254,8 @@ export function FileImportModal({
           <DialogDescription>
             {step === 1 && 'Faça o upload do seu arquivo de extrato (.csv, .xlsx, .xls).'}
             {step === 2 && 'O arquivo possui múltiplas abas. Selecione qual deseja importar.'}
-            {step === 3 && 'Mapeie as colunas do seu arquivo para os campos do sistema.'}
-            {step === 4 && 'Pré-visualização dos dados importados. Confirme se está tudo correto.'}
+            {step === 3 &&
+              'Pré-visualização dos dados importados (Colunas A, C e E). Confirme se está tudo correto.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -300,41 +301,6 @@ export function FileImportModal({
         )}
 
         {step === 3 && (
-          <div className="grid gap-4 py-4">
-            <div className="bg-muted/50 p-3 rounded-md mb-2">
-              <p className="text-sm text-muted-foreground">
-                <strong>Arquivo:</strong> {fileName} {selectedSheet && `(Aba: ${selectedSheet})`}
-              </p>
-            </div>
-            {Object.entries({
-              date: 'Data (Ex: Coluna A)',
-              desc: 'Descrição (Ex: Coluna C)',
-              amount: 'Valor (Ex: Coluna E)',
-              cat: 'Categoria',
-            }).map(([k, l]) => (
-              <div key={k} className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right text-sm">{l}</Label>
-                <Select
-                  value={(mapping as any)[k]}
-                  onValueChange={(v) => setMapping((p) => ({ ...p, [k]: v }))}
-                >
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Selecione a coluna" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(fileData[0] || []).map((c, i) => (
-                      <SelectItem key={i} value={i.toString()}>
-                        {c || `Coluna ${i + 1}`}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {step === 4 && (
           <ImportPreviewTable preview={preview} onCategoryChange={handleCategoryChange} />
         )}
 
@@ -344,11 +310,9 @@ export function FileImportModal({
             onClick={
               step === 1
                 ? handleClose
-                : () => {
-                    if (step === 3 && workbook && workbook.SheetNames.length > 1) setStep(2)
-                    else if (step === 3) setStep(1)
-                    else setStep((s) => (s - 1) as any)
-                  }
+                : step === 3 && workbook && workbook.SheetNames.length > 1
+                  ? () => setStep(2)
+                  : () => setStep(1)
             }
           >
             {step === 1 ? 'Cancelar' : 'Voltar'}
@@ -359,11 +323,6 @@ export function FileImportModal({
             </Button>
           )}
           {step === 3 && (
-            <Button onClick={validate} className="gap-2">
-              Avançar <ArrowRight className="h-4 w-4" />
-            </Button>
-          )}
-          {step === 4 && (
             <Button onClick={handleImport} className="gap-2">
               <CheckCircle2 className="h-4 w-4" /> Confirmar Importação
             </Button>
