@@ -54,7 +54,9 @@ export function CsvImportModal({
     setFileName(file.name)
     const reader = new FileReader()
     reader.onload = (ev) => {
-      const rows = (ev.target?.result as string)
+      const result = ev.target?.result
+      if (typeof result !== 'string') return
+      const rows = result
         .split('\n')
         .filter((r) => r.trim())
         .map((r) => r.split(',').map((c) => c.trim().replace(/^"|"$/g, '')))
