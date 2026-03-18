@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Upload, Filter } from 'lucide-react'
+import { Upload, Filter, History } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -11,6 +11,7 @@ import {
 import { TransactionTable } from '@/components/financeiro/TransactionTable'
 import { TransactionSheet } from '@/components/financeiro/TransactionSheet'
 import { CsvImportModal } from '@/components/financeiro/CsvImportModal'
+import { ImportHistoryModal } from '@/components/financeiro/ImportHistoryModal'
 import useAgroStore from '@/stores/useAgroStore'
 import { Transaction } from '@/types'
 
@@ -21,6 +22,7 @@ export default function Financeiro() {
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null)
   const [isSheetOpen, setIsSheetOpen] = useState(false)
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false)
 
   const filteredTransactions = transactions.filter(
     (t) => filterCrop === 'Todos' || t.crop === filterCrop,
@@ -48,10 +50,25 @@ export default function Financeiro() {
             </SelectContent>
           </Select>
         </div>
-        <Button onClick={() => setIsImportModalOpen(true)} variant="secondary" className="gap-2">
-          <Upload className="h-4 w-4" />
-          Importar Extrato (CSV)
-        </Button>
+        <div className="flex gap-2 w-full sm:w-auto">
+          <Button
+            onClick={() => setIsHistoryModalOpen(true)}
+            variant="outline"
+            className="gap-2 flex-1 sm:flex-none"
+          >
+            <History className="h-4 w-4" />
+            <span className="hidden sm:inline">Histórico</span>
+          </Button>
+          <Button
+            onClick={() => setIsImportModalOpen(true)}
+            variant="secondary"
+            className="gap-2 flex-1 sm:flex-none"
+          >
+            <Upload className="h-4 w-4" />
+            <span className="hidden sm:inline">Importar Extrato (CSV)</span>
+            <span className="sm:hidden">Importar</span>
+          </Button>
+        </div>
       </div>
 
       <TransactionTable transactions={filteredTransactions} onSelect={handleRowClick} />
@@ -64,6 +81,7 @@ export default function Financeiro() {
       />
 
       <CsvImportModal open={isImportModalOpen} onOpenChange={setIsImportModalOpen} />
+      <ImportHistoryModal open={isHistoryModalOpen} onOpenChange={setIsHistoryModalOpen} />
     </div>
   )
 }

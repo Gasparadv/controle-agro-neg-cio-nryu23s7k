@@ -1,14 +1,26 @@
 import React, { createContext, useContext, useState } from 'react'
-import { Transaction } from '@/types'
+import { Transaction, ImportBatch } from '@/types'
 
 interface AgroStoreContextType {
   transactions: Transaction[]
+  importBatches: ImportBatch[]
   addTransaction: (tx: Transaction) => void
   addTransactions: (txs: Transaction[]) => void
   updateTransaction: (tx: Transaction) => void
   approveTransaction: (id: string) => void
   rejectTransaction: (id: string, reason: string) => void
+  addImportBatch: (batch: ImportBatch) => void
+  undoImportBatch: (batchId: string) => void
 }
+
+const initialImportBatches: ImportBatch[] = [
+  {
+    id: 'batch-1',
+    date: '2024-04-15T10:30:00.000Z',
+    fileName: 'extrato_bradesco_abr.csv',
+    recordCount: 2,
+  },
+]
 
 const initialTransactions: Transaction[] = [
   {
@@ -92,12 +104,37 @@ const initialTransactions: Transaction[] = [
     collaboratorName: 'Carlos Assistente',
     rejectionReason: 'Faltou anexar a nota fiscal da compra.',
   },
+  {
+    id: '8',
+    date: '2024-04-14',
+    description: 'Pagamento Fornecedor XYZ',
+    amount: 5000,
+    type: 'despesa',
+    category: 'Outros',
+    comments: 'Importado',
+    crop: 'Geral',
+    status: 'approved',
+    importBatchId: 'batch-1',
+  },
+  {
+    id: '9',
+    date: '2024-04-15',
+    description: 'Recebimento Cliente ABC',
+    amount: 12000,
+    type: 'receita',
+    category: 'Venda',
+    comments: 'Importado',
+    crop: 'Geral',
+    status: 'approved',
+    importBatchId: 'batch-1',
+  },
 ]
 
 const AgroStoreContext = createContext<AgroStoreContextType | undefined>(undefined)
 
 export function AgroProvider({ children }: { children: React.ReactNode }) {
   const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions)
+  const [importBatches, setImportBatches] = useState<ImportBatch[]>(initialImportBatches)
 
   const addTransaction = (tx: Transaction) => {
     setTransactions((prev) => [tx, ...prev])
@@ -127,15 +164,27 @@ export function AgroProvider({ children }: { children: React.ReactNode }) {
     )
   }
 
+  const addImportBatch = (batch: ImportBatch) => {
+    setImportBatches((prev) => [batch, ...prev])
+  }
+
+  const undoImportBatch = (batchId: string) => {
+    setTransactions((prev) => prev.filter((tx) => tx.importBatchId !== batchId))
+    setImportBatches((prev) => prev.filter((b) => b.id !== batchId))
+  }
+
   return (
     <AgroStoreContext.Provider
       value={{
         transactions,
+        importBatches,
         addTransaction,
         addTransactions,
         updateTransaction,
         approveTransaction,
         rejectTransaction,
+        addImportBatch,
+        undoImportBatch,
       }}
     >
       {children}

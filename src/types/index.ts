@@ -14,6 +14,13 @@ export interface User {
   role: Role
 }
 
+export interface ImportBatch {
+  id: string
+  date: string
+  fileName: string
+  recordCount: number
+}
+
 export interface Transaction {
   id: string
   date: string
@@ -26,6 +33,7 @@ export interface Transaction {
   status?: TransactionStatus
   rejectionReason?: string
   collaboratorName?: string
+  importBatchId?: string
 }
 
 export type InventoryType = 'Semente' | 'Fertilizante' | 'Defensivo' | 'Outros'
