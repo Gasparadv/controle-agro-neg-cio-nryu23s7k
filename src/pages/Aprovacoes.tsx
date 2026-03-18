@@ -37,7 +37,7 @@ export default function Aprovacoes() {
   })
   const [rejectionReason, setRejectionReason] = useState('')
 
-  if (role !== 'owner') {
+  if (role !== 'owner' && role !== 'manager') {
     return <Navigate to="/" replace />
   }
 
@@ -122,7 +122,6 @@ export default function Aprovacoes() {
         <TabsContent value="pending" className="animate-fade-in-up">
           {pendingTx.length > 0 ? (
             <>
-              {/* Desktop Table */}
               <div className="hidden md:block rounded-md border bg-card shadow-subtle overflow-hidden">
                 <Table>
                   <TableHeader>
@@ -192,7 +191,6 @@ export default function Aprovacoes() {
                 </Table>
               </div>
 
-              {/* Mobile Cards */}
               <div className="grid gap-4 md:hidden">
                 {pendingTx.map((tx) => (
                   <Card key={tx.id} className="shadow-sm">
@@ -259,7 +257,6 @@ export default function Aprovacoes() {
         <TabsContent value="history" className="animate-fade-in-up">
           {historyTx.length > 0 ? (
             <>
-              {/* Desktop Table */}
               <div className="hidden md:block rounded-md border bg-card shadow-subtle overflow-hidden">
                 <Table>
                   <TableHeader>
@@ -300,7 +297,6 @@ export default function Aprovacoes() {
                 </Table>
               </div>
 
-              {/* Mobile Cards */}
               <div className="grid gap-4 md:hidden">
                 {historyTx.map((tx) => (
                   <Card

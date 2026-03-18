@@ -54,7 +54,7 @@ const titleMap: Record<string, string> = {
 
 export function Layout() {
   const location = useLocation()
-  const { user, setActiveUser, role, userName } = useAuthStore()
+  const { user, setActiveUser, role } = useAuthStore()
   const { users } = useTeamStore()
   const { transactions } = useAgroStore()
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false)
@@ -73,9 +73,23 @@ export function Layout() {
     { name: 'Relatórios', path: '/relatorios', icon: PieChart },
   ]
 
-  if (role === 'owner') {
+  if (role === 'owner' || role === 'manager') {
     navItems.push({ name: 'Aprovações', path: '/aprovacoes', icon: CheckSquare })
     navItems.push({ name: 'Equipe', path: '/equipe', icon: Users })
+  }
+
+  const getRoleLabel = (r: string) => {
+    switch (r) {
+      case 'owner':
+        return 'Prop.'
+      case 'manager':
+        return 'Gestor'
+      case 'senior':
+        return 'Pleno'
+      case 'collaborator':
+      default:
+        return 'Colab.'
+    }
   }
 
   return (
@@ -139,11 +153,11 @@ export function Layout() {
                     {users.map((u) => (
                       <SelectItem key={u.id} value={u.id}>
                         <div className="flex items-center gap-2">
-                          <span className={u.role === 'owner' ? 'text-primary' : 'text-yellow-600'}>
+                          <span className={u.role === 'owner' ? 'text-primary' : 'text-foreground'}>
                             {u.name}
                           </span>
                           <span className="text-xs text-muted-foreground">
-                            ({u.role === 'owner' ? 'Prop.' : 'Assist.'})
+                            ({getRoleLabel(u.role)})
                           </span>
                         </div>
                       </SelectItem>

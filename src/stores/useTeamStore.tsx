@@ -17,6 +17,13 @@ const initialUsers: User[] = [
     password: 'password123',
   },
   {
+    id: 'u3',
+    name: 'Maria Gestora',
+    email: 'maria@fazenda.com',
+    role: 'manager',
+    password: 'password123',
+  },
+  {
     id: 'u2',
     name: 'Carlos Assistente',
     email: 'carlos@fazenda.com',

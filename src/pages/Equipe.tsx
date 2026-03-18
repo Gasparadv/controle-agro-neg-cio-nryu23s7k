@@ -26,9 +26,11 @@ export default function Equipe() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<User | undefined>()
 
-  if (role !== 'owner') {
+  if (role !== 'owner' && role !== 'manager') {
     return <Navigate to="/" replace />
   }
+
+  const isOwner = role === 'owner'
 
   const handleAdd = () => {
     setEditingUser(undefined)
@@ -92,10 +94,12 @@ export default function Equipe() {
             financeiros.
           </p>
         </div>
-        <Button onClick={handleAdd} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Novo Colaborador
-        </Button>
+        {isOwner && (
+          <Button onClick={handleAdd} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Novo Colaborador
+          </Button>
+        )}
       </div>
 
       <div className="hidden md:block rounded-md border bg-card shadow-subtle overflow-hidden">
@@ -105,7 +109,7 @@ export default function Equipe() {
               <TableHead>Nome</TableHead>
               <TableHead>E-mail</TableHead>
               <TableHead>Nível de Acesso</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
+              {isOwner && <TableHead className="text-right">Ações</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -114,21 +118,23 @@ export default function Equipe() {
                 <TableCell className="font-medium">{u.name}</TableCell>
                 <TableCell>{u.email}</TableCell>
                 <TableCell>{renderRoleBadge(u.role)}</TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <Button variant="ghost" size="icon" onClick={() => handleEdit(u)}>
-                      <Pencil className="h-4 w-4 text-muted-foreground" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                      onClick={() => handleDelete(u.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </TableCell>
+                {isOwner && (
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button variant="ghost" size="icon" onClick={() => handleEdit(u)}>
+                        <Pencil className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => handleDelete(u.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>
@@ -146,19 +152,21 @@ export default function Equipe() {
                 </div>
                 {renderRoleBadge(u.role)}
               </div>
-              <div className="flex gap-2 pt-2 border-t justify-end">
-                <Button variant="outline" size="sm" onClick={() => handleEdit(u)}>
-                  <Pencil className="h-4 w-4 mr-2" /> Editar
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground"
-                  onClick={() => handleDelete(u.id)}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" /> Excluir
-                </Button>
-              </div>
+              {isOwner && (
+                <div className="flex gap-2 pt-2 border-t justify-end">
+                  <Button variant="outline" size="sm" onClick={() => handleEdit(u)}>
+                    <Pencil className="h-4 w-4 mr-2" /> Editar
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground"
+                    onClick={() => handleDelete(u.id)}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" /> Excluir
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         ))}
