@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/select'
 import { TransactionTable } from '@/components/financeiro/TransactionTable'
 import { TransactionSheet } from '@/components/financeiro/TransactionSheet'
-import { CsvImportModal } from '@/components/financeiro/CsvImportModal'
+import { FileImportModal } from '@/components/financeiro/FileImportModal'
 import { ImportHistoryModal } from '@/components/financeiro/ImportHistoryModal'
 import useAgroStore from '@/stores/useAgroStore'
 import { Transaction } from '@/types'
@@ -65,7 +65,7 @@ export default function Financeiro() {
             className="gap-2 flex-1 sm:flex-none"
           >
             <Upload className="h-4 w-4" />
-            <span className="hidden sm:inline">Importar Extrato (CSV)</span>
+            <span className="hidden sm:inline">Importar (CSV/Excel)</span>
             <span className="sm:hidden">Importar</span>
           </Button>
         </div>
@@ -80,7 +80,7 @@ export default function Financeiro() {
         onSave={updateTransaction}
       />
 
-      <CsvImportModal open={isImportModalOpen} onOpenChange={setIsImportModalOpen} />
+      <FileImportModal open={isImportModalOpen} onOpenChange={setIsImportModalOpen} />
       <ImportHistoryModal open={isHistoryModalOpen} onOpenChange={setIsHistoryModalOpen} />
     </div>
   )
