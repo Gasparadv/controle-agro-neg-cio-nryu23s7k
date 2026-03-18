@@ -76,6 +76,26 @@ export function FileImportModal({
         errorMsg = 'Valor inválido'
       }
 
+      let detectedType: 'receita' | 'despesa' | '' = ''
+      if (parsedAmt < 0) {
+        detectedType = 'despesa'
+      } else {
+        const hasDebitMarker = row.some((c) => {
+          const s = String(c || '')
+            .trim()
+            .toUpperCase()
+          return s === 'D' || s === 'DEBITO' || s === 'DÉBITO'
+        })
+        const hasCreditMarker = row.some((c) => {
+          const s = String(c || '')
+            .trim()
+            .toUpperCase()
+          return s === 'C' || s === 'CREDITO' || s === 'CRÉDITO'
+        })
+        if (hasDebitMarker) detectedType = 'despesa'
+        else if (hasCreditMarker) detectedType = 'receita'
+      }
+
       const desc = String(rawDesc).trim()
       let cat = ''
 
@@ -118,14 +138,14 @@ export function FileImportModal({
         cat = 'Outros'
       }
 
-      const type = parsedAmt < 0 ? 'despesa' : 'receita'
       const isDup =
         !isInvalid &&
+        detectedType !== '' &&
         transactions.some(
           (tx) =>
             tx.date === dateStr &&
             tx.amount === Math.abs(parsedAmt) &&
-            tx.type === type &&
+            tx.type === detectedType &&
             tx.description === desc,
         )
 
@@ -135,6 +155,7 @@ export function FileImportModal({
         desc,
         amount: parsedAmt,
         cat,
+        type: detectedType,
         isDuplicate: isDup,
         isInvalid,
         errorMsg,
@@ -210,6 +231,16 @@ export function FileImportModal({
 
     const validToImport = preview.filter((r) => !r.isDuplicate && !r.isInvalid)
 
+    if (validToImport.some((r) => r.type === '')) {
+      toast({
+        variant: 'destructive',
+        title: 'Atenção',
+        description:
+          'Existem lançamentos sem tipo definido (Débito/Crédito). Por favor, classifique-os antes de importar.',
+      })
+      return
+    }
+
     if (!validToImport.length) {
       toast({
         variant: 'destructive',
@@ -226,7 +257,7 @@ export function FileImportModal({
         date: r.date,
         description: r.desc || 'Importado',
         amount: Math.abs(r.amount),
-        type: r.amount < 0 ? 'despesa' : 'receita',
+        type: r.type as 'receita' | 'despesa',
         category: r.cat || 'Outros',
         comments: `Arquivo: ${fileName}`,
         crop: 'Geral',
@@ -265,16 +296,35 @@ export function FileImportModal({
     })
   }
 
+  const handleTypeChange = (index: number, newType: 'receita' | 'despesa') => {
+    setPreview((prev) => {
+      const copy = [...prev]
+      copy[index].type = newType
+
+      const r = copy[index]
+      if (!r.isInvalid) {
+        r.isDuplicate = transactions.some(
+          (tx) =>
+            tx.date === r.date &&
+            tx.amount === Math.abs(r.amount) &&
+            tx.type === r.type &&
+            tx.description === r.desc,
+        )
+      }
+      return copy
+    })
+  }
+
   return (
     <Dialog open={open} onOpenChange={(val) => !val && handleClose()}>
-      <DialogContent className="sm:max-w-[700px] overflow-hidden flex flex-col max-h-[90vh]">
+      <DialogContent className="sm:max-w-[750px] overflow-hidden flex flex-col max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>Importar Extrato (CSV / Excel)</DialogTitle>
           <DialogDescription>
             {step === 1 && 'Faça o upload do seu arquivo de extrato (.csv, .xlsx, .xls).'}
             {step === 2 && 'O arquivo possui múltiplas abas. Selecione qual deseja importar.'}
             {step === 3 &&
-              'Pré-visualização dos dados importados. Você pode alterar as categorias antes de confirmar.'}
+              'Pré-visualização dos dados importados. Você pode alterar o tipo e as categorias antes de confirmar.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -321,7 +371,11 @@ export function FileImportModal({
 
         {step === 3 && (
           <div className="flex-1 mt-4">
-            <ImportPreviewTable preview={preview} onCategoryChange={handleCategoryChange} />
+            <ImportPreviewTable
+              preview={preview}
+              onCategoryChange={handleCategoryChange}
+              onTypeChange={handleTypeChange}
+            />
           </div>
         )}
 

@@ -25,6 +25,7 @@ export interface PreviewRow {
   desc: string
   amount: number
   cat: string
+  type: 'receita' | 'despesa' | ''
   isDuplicate: boolean
   isInvalid?: boolean
   errorMsg?: string
@@ -34,21 +35,37 @@ export interface PreviewRow {
 interface ImportPreviewTableProps {
   preview: PreviewRow[]
   onCategoryChange: (index: number, newCat: string) => void
+  onTypeChange: (index: number, newType: 'receita' | 'despesa') => void
 }
 
-export function ImportPreviewTable({ preview, onCategoryChange }: ImportPreviewTableProps) {
+export function ImportPreviewTable({
+  preview,
+  onCategoryChange,
+  onTypeChange,
+}: ImportPreviewTableProps) {
   const invalidCount = preview.filter((r) => r.isInvalid).length
+  const missingTypeCount = preview.filter(
+    (r) => !r.isDuplicate && !r.isInvalid && r.type === '',
+  ).length
 
   return (
     <div className="rounded-md border overflow-hidden flex flex-col h-[400px]">
       <div className="bg-muted p-3 text-xs text-muted-foreground border-b flex items-center justify-between font-medium">
         <span>Colunas mapeadas: A (Data), C (Descrição), E (Valor).</span>
-        {invalidCount > 0 && (
-          <span className="text-destructive font-semibold">
-            {invalidCount} {invalidCount === 1 ? 'registro inválido' : 'registros inválidos'}{' '}
-            detectados
-          </span>
-        )}
+        <div className="flex gap-4">
+          {missingTypeCount > 0 && (
+            <span className="text-destructive font-semibold">
+              {missingTypeCount}{' '}
+              {missingTypeCount === 1 ? 'registro sem tipo' : 'registros sem tipo'}
+            </span>
+          )}
+          {invalidCount > 0 && (
+            <span className="text-destructive font-semibold">
+              {invalidCount} {invalidCount === 1 ? 'registro inválido' : 'registros inválidos'}{' '}
+              detectados
+            </span>
+          )}
+        </div>
       </div>
       <ScrollArea className="flex-1">
         <Table>
@@ -56,6 +73,7 @@ export function ImportPreviewTable({ preview, onCategoryChange }: ImportPreviewT
             <TableRow>
               <TableHead>Data</TableHead>
               <TableHead>Descrição</TableHead>
+              <TableHead>Tipo</TableHead>
               <TableHead>Categoria</TableHead>
               <TableHead className="text-right">Valor</TableHead>
             </TableRow>
@@ -77,7 +95,7 @@ export function ImportPreviewTable({ preview, onCategoryChange }: ImportPreviewT
                 </TableCell>
                 <TableCell>
                   <div className="flex flex-col gap-1 items-start">
-                    <span className="truncate max-w-[200px] block font-medium" title={r.desc}>
+                    <span className="truncate max-w-[150px] block font-medium" title={r.desc}>
                       {r.desc || '-'}
                     </span>
                     <div className="flex gap-1">
@@ -99,11 +117,34 @@ export function ImportPreviewTable({ preview, onCategoryChange }: ImportPreviewT
                 </TableCell>
                 <TableCell>
                   <Select
+                    value={r.type}
+                    onValueChange={(val: 'receita' | 'despesa') => onTypeChange(i, val)}
+                    disabled={r.isDuplicate || r.isInvalid}
+                  >
+                    <SelectTrigger
+                      className={cn(
+                        'h-8 text-xs w-[100px]',
+                        r.type === '' &&
+                          !r.isInvalid &&
+                          !r.isDuplicate &&
+                          'border-destructive ring-destructive',
+                      )}
+                    >
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="despesa">Débito</SelectItem>
+                      <SelectItem value="receita">Crédito</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </TableCell>
+                <TableCell>
+                  <Select
                     value={r.cat}
                     onValueChange={(val) => onCategoryChange(i, val)}
                     disabled={r.isDuplicate || r.isInvalid}
                   >
-                    <SelectTrigger className="h-8 text-xs w-[130px]">
+                    <SelectTrigger className="h-8 text-xs w-[120px]">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -124,9 +165,14 @@ export function ImportPreviewTable({ preview, onCategoryChange }: ImportPreviewT
                   ) : (
                     <span
                       className={
-                        r.amount > 0 ? 'text-primary font-medium' : 'text-destructive font-medium'
+                        r.type === 'receita'
+                          ? 'text-primary font-medium'
+                          : r.type === 'despesa'
+                            ? 'text-destructive font-medium'
+                            : 'font-medium'
                       }
                     >
+                      {r.type === 'despesa' ? '- ' : r.type === 'receita' ? '+ ' : ''}
                       {formatBRL(Math.abs(r.amount))}
                     </span>
                   )}
