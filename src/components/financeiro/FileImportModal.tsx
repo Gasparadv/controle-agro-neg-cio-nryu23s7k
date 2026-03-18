@@ -17,21 +17,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import { useToast } from '@/hooks/use-toast'
 import useAgroStore from '@/stores/useAgroStore'
 import useAuthStore from '@/stores/useAuthStore'
 import { Transaction } from '@/types'
-import { formatBRL } from '@/lib/format'
 import { parseAmount, parseDate, readExcelFile, getSheetData, parseCsvFile } from '@/lib/parser'
 import * as XLSX from 'xlsx'
+import { ImportPreviewTable, PreviewRow } from './ImportPreviewTable'
 
 export function FileImportModal({
   open,
@@ -46,11 +38,11 @@ export function FileImportModal({
   const [workbook, setWorkbook] = useState<XLSX.WorkBook | null>(null)
   const [selectedSheet, setSelectedSheet] = useState<string>('')
   const [mapping, setMapping] = useState({ date: '0', desc: '1', amount: '2', cat: '3' })
-  const [preview, setPreview] = useState<any[]>([])
+  const [preview, setPreview] = useState<PreviewRow[]>([])
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const { addTransactions, addImportBatch } = useAgroStore()
+  const { transactions, addTransactions, addImportBatch } = useAgroStore()
   const { role, userName } = useAuthStore()
   const { toast } = useToast()
 
@@ -108,23 +100,77 @@ export function FileImportModal({
 
   const validate = () => {
     let valid = true
-    const p = []
+    const p: PreviewRow[] = []
     const validRows = fileData.slice(1).filter((r) => r.some((c) => c.trim() !== ''))
 
-    for (let i = 0; i < Math.min(validRows.length, 5); i++) {
+    for (let i = 0; i < validRows.length; i++) {
       const row = validRows[i]
       const rawAmt = row[parseInt(mapping.amount)]
       const rawDate = row[parseInt(mapping.date)]
       const parsedAmt = parseAmount(rawAmt)
 
-      if (rawAmt && isNaN(parsedAmt)) valid = false
-      if (!rawDate || rawDate.length < 4) valid = false
+      if (i < 5) {
+        if (rawAmt && isNaN(parsedAmt)) valid = false
+        if (!rawDate || rawDate.length < 4) valid = false
+      }
+
+      if (!rawDate || rawDate.length < 4 || isNaN(parsedAmt)) continue
+
+      const desc = row[parseInt(mapping.desc)] || ''
+      let cat = row[parseInt(mapping.cat)] || ''
+
+      const d = desc.toLowerCase()
+      if (
+        d.includes('posto') ||
+        d.includes('combustível') ||
+        d.includes('diesel') ||
+        d.includes('oficina') ||
+        d.includes('trator') ||
+        d.includes('manutenção') ||
+        d.includes('peça')
+      ) {
+        cat = 'Manutenção'
+      } else if (
+        d.includes('semente') ||
+        d.includes('fertilizante') ||
+        d.includes('adubo') ||
+        d.includes('defensivo') ||
+        d.includes('npk') ||
+        d.includes('veneno')
+      ) {
+        cat = 'Insumos'
+      } else if (
+        d.includes('salário') ||
+        d.includes('pagamento') ||
+        d.includes('diária') ||
+        d.includes('mão de obra') ||
+        d.includes('acerto')
+      ) {
+        cat = 'Mão de Obra'
+      } else if (
+        d.includes('venda') ||
+        d.includes('recebimento') ||
+        d.includes('safra') ||
+        d.includes('soja') ||
+        d.includes('milho')
+      ) {
+        cat = 'Venda'
+      } else if (!cat) {
+        cat = 'Outros'
+      }
+
+      const dateStr = parseDate(rawDate)
+      const isDup = transactions.some(
+        (tx) => tx.date === dateStr && tx.amount === Math.abs(parsedAmt),
+      )
 
       p.push({
-        date: parseDate(rawDate),
-        desc: row[parseInt(mapping.desc)] || '',
+        index: i,
+        date: dateStr,
+        desc,
         amount: parsedAmt,
-        cat: row[parseInt(mapping.cat)] || '',
+        cat,
+        isDuplicate: isDup,
       })
     }
 
@@ -142,37 +188,32 @@ export function FileImportModal({
   const handleImport = () => {
     const isCollab = role === 'collaborator'
     const batchId = `batch-${Date.now()}`
-    const validRows = fileData.slice(1).filter((r) => r.some((c) => c.trim() !== ''))
 
-    const txs: Transaction[] = validRows
-      .map((row, i) => {
-        const rawDate = row[parseInt(mapping.date)]
-        if (!rawDate) return null
-        const amt = parseAmount(row[parseInt(mapping.amount)])
-        if (isNaN(amt)) return null
+    const validToImport = preview.filter((r) => !r.isDuplicate)
 
-        return {
-          id: `imp-${Date.now()}-${i}`,
-          date: parseDate(rawDate),
-          description: row[parseInt(mapping.desc)] || 'Importado',
-          amount: Math.abs(amt),
-          type: amt < 0 ? 'despesa' : 'receita',
-          category: row[parseInt(mapping.cat)] || 'Outros',
-          comments: `Arquivo: ${fileName}`,
-          crop: 'Geral',
-          status: isCollab ? 'pending' : 'approved',
-          collaboratorName: isCollab ? userName : undefined,
-          importBatchId: batchId,
-        }
-      })
-      .filter(Boolean) as Transaction[]
+    const txs: Transaction[] = validToImport.map((r, i) => {
+      return {
+        id: `imp-${Date.now()}-${i}`,
+        date: r.date,
+        description: r.desc || 'Importado',
+        amount: Math.abs(r.amount),
+        type: r.amount < 0 ? 'despesa' : 'receita',
+        category: r.cat || 'Outros',
+        comments: `Arquivo: ${fileName}`,
+        crop: 'Geral',
+        status: isCollab ? 'pending' : 'approved',
+        collaboratorName: isCollab ? userName : undefined,
+        importBatchId: batchId,
+      }
+    })
 
-    if (!txs.length)
+    if (!txs.length) {
       return toast({
         variant: 'destructive',
-        title: 'Erro',
-        description: 'Nenhum lançamento válido encontrado.',
+        title: 'Aviso',
+        description: 'Nenhum lançamento válido encontrado (todos duplicados ou vazios).',
       })
+    }
 
     addTransactions(txs)
     addImportBatch({
@@ -191,13 +232,22 @@ export function FileImportModal({
     setFileName('')
     setWorkbook(null)
     setSelectedSheet('')
+    setPreview([])
     if (fileInputRef.current) fileInputRef.current.value = ''
     onOpenChange(false)
   }
 
+  const handleCategoryChange = (index: number, newCat: string) => {
+    setPreview((prev) => {
+      const copy = [...prev]
+      copy[index].cat = newCat
+      return copy
+    })
+  }
+
   return (
     <Dialog open={open} onOpenChange={(val) => !val && handleClose()}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[700px]">
         <DialogHeader>
           <DialogTitle>Importar Extrato (CSV / Excel)</DialogTitle>
           <DialogDescription>
@@ -285,32 +335,7 @@ export function FileImportModal({
         )}
 
         {step === 4 && (
-          <div className="rounded-md border overflow-hidden">
-            <Table>
-              <TableHeader className="bg-muted/50">
-                <TableRow>
-                  <TableHead>Data</TableHead>
-                  <TableHead>Descrição</TableHead>
-                  <TableHead>Cat.</TableHead>
-                  <TableHead className="text-right">Valor</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {preview.map((r, i) => (
-                  <TableRow key={i}>
-                    <TableCell>{r.date}</TableCell>
-                    <TableCell className="truncate max-w-[150px]">{r.desc}</TableCell>
-                    <TableCell>{r.cat || '-'}</TableCell>
-                    <TableCell className="text-right">
-                      <span className={r.amount > 0 ? 'text-primary' : 'text-destructive'}>
-                        {formatBRL(Math.abs(r.amount))}
-                      </span>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+          <ImportPreviewTable preview={preview} onCategoryChange={handleCategoryChange} />
         )}
 
         <div className="flex justify-between mt-4">
@@ -340,7 +365,7 @@ export function FileImportModal({
           )}
           {step === 4 && (
             <Button onClick={handleImport} className="gap-2">
-              <CheckCircle2 className="h-4 w-4" /> Confirmar
+              <CheckCircle2 className="h-4 w-4" /> Confirmar Importação
             </Button>
           )}
         </div>
