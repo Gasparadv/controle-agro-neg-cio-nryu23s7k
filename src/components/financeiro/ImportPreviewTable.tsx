@@ -51,7 +51,7 @@ export function ImportPreviewTable({
   return (
     <div className="rounded-md border overflow-hidden flex flex-col h-[400px]">
       <div className="bg-muted p-3 text-xs text-muted-foreground border-b flex items-center justify-between font-medium">
-        <span>Colunas mapeadas: A (Data), C (Descrição), E (Valor).</span>
+        <span>Mapeamento: Col A (Data), Col C (Descrição), Col E (Valor), Col F (D/C).</span>
         <div className="flex gap-4">
           {missingTypeCount > 0 && (
             <span className="text-destructive font-semibold">
@@ -100,7 +100,10 @@ export function ImportPreviewTable({
                     </span>
                     <div className="flex gap-1">
                       {r.isDuplicate && (
-                        <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] px-1.5 py-0 h-4 bg-background"
+                        >
                           Duplicado
                         </Badge>
                       )}
@@ -123,18 +126,18 @@ export function ImportPreviewTable({
                   >
                     <SelectTrigger
                       className={cn(
-                        'h-8 text-xs w-[100px]',
+                        'h-8 text-xs w-[110px]',
                         r.type === '' &&
                           !r.isInvalid &&
                           !r.isDuplicate &&
-                          'border-destructive ring-destructive',
+                          'border-yellow-500 ring-yellow-500 bg-yellow-50 dark:bg-yellow-950/20 text-yellow-700 dark:text-yellow-500',
                       )}
                     >
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="despesa">Débito</SelectItem>
-                      <SelectItem value="receita">Crédito</SelectItem>
+                      <SelectItem value="despesa">Débito (D)</SelectItem>
+                      <SelectItem value="receita">Crédito (C)</SelectItem>
                     </SelectContent>
                   </Select>
                 </TableCell>
@@ -164,13 +167,12 @@ export function ImportPreviewTable({
                     </span>
                   ) : (
                     <span
-                      className={
-                        r.type === 'receita'
-                          ? 'text-primary font-medium'
-                          : r.type === 'despesa'
-                            ? 'text-destructive font-medium'
-                            : 'font-medium'
-                      }
+                      className={cn(
+                        'font-medium',
+                        r.type === 'receita' && 'text-green-600 dark:text-green-500',
+                        r.type === 'despesa' && 'text-destructive',
+                        r.type === '' && 'text-muted-foreground',
+                      )}
                     >
                       {r.type === 'despesa' ? '- ' : r.type === 'receita' ? '+ ' : ''}
                       {formatBRL(Math.abs(r.amount))}

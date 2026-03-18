@@ -54,13 +54,22 @@ export function FileImportModal({
       const rawDate = row[0]
       const rawDesc = row[2] || ''
       const rawAmt = row[4]
+      const rawTypeMarkerF = String(row[5] || '')
+        .trim()
+        .toUpperCase()
 
-      if (i === 0 && String(rawDate).toLowerCase().includes('data')) continue
+      if (
+        i === 0 &&
+        (String(rawDate).toLowerCase().includes('data') ||
+          String(rawDesc).toLowerCase().includes('descri'))
+      )
+        continue
 
       const dateStr = parseDate(rawDate)
       const isDateValid = /^\d{4}-\d{2}-\d{2}$/.test(dateStr)
       const parsedAmt = parseAmount(rawAmt)
-      const isAmtValid = Boolean(rawAmt) && (parsedAmt !== 0 || String(rawAmt).includes('0'))
+      const hasNumbers = /\d/.test(String(rawAmt))
+      const isAmtValid = Boolean(rawAmt) && hasNumbers && !isNaN(parsedAmt)
 
       let isInvalid = false
       let errorMsg = ''
@@ -77,7 +86,12 @@ export function FileImportModal({
       }
 
       let detectedType: 'receita' | 'despesa' | '' = ''
-      if (parsedAmt < 0) {
+
+      if (['D', 'DEBITO', 'DÉBITO'].includes(rawTypeMarkerF)) {
+        detectedType = 'despesa'
+      } else if (['C', 'CREDITO', 'CRÉDITO'].includes(rawTypeMarkerF)) {
+        detectedType = 'receita'
+      } else if (parsedAmt < 0) {
         detectedType = 'despesa'
       } else {
         const hasDebitMarker = row.some((c) => {
@@ -114,16 +128,14 @@ export function FileImportModal({
         d.includes('fertilizante') ||
         d.includes('adubo') ||
         d.includes('defensivo') ||
-        d.includes('npk') ||
-        d.includes('veneno')
+        d.includes('npk')
       ) {
         cat = 'Insumos'
       } else if (
         d.includes('salário') ||
         d.includes('pagamento') ||
         d.includes('diária') ||
-        d.includes('mão de obra') ||
-        d.includes('acerto')
+        d.includes('mão de obra')
       ) {
         cat = 'Mão de Obra'
       } else if (
@@ -236,7 +248,7 @@ export function FileImportModal({
         variant: 'destructive',
         title: 'Atenção',
         description:
-          'Existem lançamentos sem tipo definido (Débito/Crédito). Por favor, classifique-os antes de importar.',
+          'Existem lançamentos sem tipo definido (Débito/Crédito). Por favor, classifique-os antes de confirmar.',
       })
       return
     }

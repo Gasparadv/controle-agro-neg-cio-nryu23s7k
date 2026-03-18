@@ -51,9 +51,12 @@ export const readExcelFile = async (file: File) => {
 export const getSheetData = (wb: XLSX.WorkBook, sheetName: string): string[][] => {
   const ws = wb.Sheets[sheetName]
   const rows = XLSX.utils.sheet_to_json<any[]>(ws, { header: 1, raw: false, dateNF: 'yyyy-mm-dd' })
-  return rows.map((row) => row.map((cell) => String(cell || '')))
+  return rows.map((row) => row.map((cell) => String(cell ?? '')))
 }
 
 export const parseCsvFile = (content: string): string[][] => {
-  return content.split('\n').map((r) => r.split(',').map((c) => c.trim().replace(/^"|"$/g, '')))
+  const delimiter = content.includes(';') ? ';' : ','
+  return content
+    .split('\n')
+    .map((r) => r.split(delimiter).map((c) => c.trim().replace(/^"|"$/g, '')))
 }
