@@ -45,25 +45,38 @@ export function FileImportModal({
   const { toast } = useToast()
 
   const validateAndPreview = (data: string[][]) => {
-    const validRows = data.filter((r) => r.some((c) => c.trim() !== ''))
     const p: PreviewRow[] = []
 
-    for (let i = 0; i < validRows.length; i++) {
-      const row = validRows[i]
-      const rawDate = row[0] // Col A
-      const rawDesc = row[2] || '' // Col C
-      const rawAmt = row[4] // Col E
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i]
+      if (!row || !row.some((c) => c && c.trim() !== '')) continue
 
-      if (!rawDate && !rawAmt) continue
+      const rawDate = row[0]
+      const rawDesc = row[2] || ''
+      const rawAmt = row[4]
+
+      if (i === 0 && String(rawDate).toLowerCase().includes('data')) continue
 
       const dateStr = parseDate(rawDate)
       const isDateValid = /^\d{4}-\d{2}-\d{2}$/.test(dateStr)
-      if (!isDateValid) continue
-
       const parsedAmt = parseAmount(rawAmt)
-      if (parsedAmt === 0 && !String(rawAmt).includes('0')) continue
+      const isAmtValid = Boolean(rawAmt) && (parsedAmt !== 0 || String(rawAmt).includes('0'))
 
-      const desc = rawDesc.trim()
+      let isInvalid = false
+      let errorMsg = ''
+
+      if (!isDateValid && !isAmtValid) {
+        isInvalid = true
+        errorMsg = 'Data e Valor inválidos'
+      } else if (!isDateValid) {
+        isInvalid = true
+        errorMsg = 'Data inválida'
+      } else if (!isAmtValid) {
+        isInvalid = true
+        errorMsg = 'Valor inválido'
+      }
+
+      const desc = String(rawDesc).trim()
       let cat = ''
 
       const d = desc.toLowerCase()
@@ -106,17 +119,26 @@ export function FileImportModal({
       }
 
       const type = parsedAmt < 0 ? 'despesa' : 'receita'
-      const isDup = transactions.some(
-        (tx) => tx.date === dateStr && tx.amount === Math.abs(parsedAmt) && tx.type === type,
-      )
+      const isDup =
+        !isInvalid &&
+        transactions.some(
+          (tx) =>
+            tx.date === dateStr &&
+            tx.amount === Math.abs(parsedAmt) &&
+            tx.type === type &&
+            tx.description === desc,
+        )
 
       p.push({
         index: i,
-        date: dateStr,
+        date: isDateValid ? dateStr : String(rawDate || 'Vazio'),
         desc,
         amount: parsedAmt,
         cat,
         isDuplicate: isDup,
+        isInvalid,
+        errorMsg,
+        rawAmt: String(rawAmt || ''),
       })
     }
 
@@ -124,8 +146,7 @@ export function FileImportModal({
       toast({
         variant: 'destructive',
         title: 'Formato Inválido',
-        description:
-          'O arquivo não contém dados válidos nas colunas A (Data), C (Descrição) e E (Valor).',
+        description: 'O arquivo não contém dados a serem importados nas colunas corretas.',
       })
       setStep(1)
       return
@@ -144,10 +165,8 @@ export function FileImportModal({
       const reader = new FileReader()
       reader.onload = (ev) => {
         const rows = parseCsvFile(ev.target?.result as string)
-        if (rows.length > 1) {
-          validateAndPreview(rows)
-        } else
-          toast({ variant: 'destructive', title: 'Erro', description: 'CSV vazio ou inválido.' })
+        if (rows.length > 0) validateAndPreview(rows)
+        else toast({ variant: 'destructive', title: 'Erro', description: 'CSV vazio ou inválido.' })
       }
       reader.readAsText(file)
     } else if (file.name.match(/\.(xlsx|xls)$/i)) {
@@ -173,7 +192,7 @@ export function FileImportModal({
 
   const processSheet = (wb: XLSX.WorkBook, sheetName: string) => {
     const rows = getSheetData(wb, sheetName)
-    if (rows.length > 1) {
+    if (rows.length > 0) {
       validateAndPreview(rows)
     } else {
       toast({
@@ -189,7 +208,17 @@ export function FileImportModal({
     const isCollab = role === 'collaborator'
     const batchId = `batch-${Date.now()}`
 
-    const validToImport = preview.filter((r) => !r.isDuplicate)
+    const validToImport = preview.filter((r) => !r.isDuplicate && !r.isInvalid)
+
+    if (!validToImport.length) {
+      toast({
+        variant: 'destructive',
+        title: 'Aviso',
+        description: 'Nenhum lançamento válido para importar.',
+      })
+      handleClose()
+      return
+    }
 
     const txs: Transaction[] = validToImport.map((r, i) => {
       return {
@@ -206,16 +235,6 @@ export function FileImportModal({
         importBatchId: batchId,
       }
     })
-
-    if (!txs.length) {
-      toast({
-        variant: 'destructive',
-        title: 'Aviso',
-        description: 'Nenhum lançamento válido encontrado (todos duplicados ou vazios).',
-      })
-      handleClose()
-      return
-    }
 
     addTransactions(txs)
     addImportBatch({
@@ -248,19 +267,19 @@ export function FileImportModal({
 
   return (
     <Dialog open={open} onOpenChange={(val) => !val && handleClose()}>
-      <DialogContent className="sm:max-w-[700px]">
+      <DialogContent className="sm:max-w-[700px] overflow-hidden flex flex-col max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>Importar Extrato (CSV / Excel)</DialogTitle>
           <DialogDescription>
             {step === 1 && 'Faça o upload do seu arquivo de extrato (.csv, .xlsx, .xls).'}
             {step === 2 && 'O arquivo possui múltiplas abas. Selecione qual deseja importar.'}
             {step === 3 &&
-              'Pré-visualização dos dados importados (Colunas A, C e E). Confirme se está tudo correto.'}
+              'Pré-visualização dos dados importados. Você pode alterar as categorias antes de confirmar.'}
           </DialogDescription>
         </DialogHeader>
 
         {step === 1 && (
-          <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg bg-muted/10 gap-4 transition-colors hover:bg-muted/30">
+          <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg bg-muted/10 gap-4 transition-colors hover:bg-muted/30 my-4">
             <FileSpreadsheet className="h-10 w-10 text-muted-foreground" />
             <Label
               htmlFor="file-upload"
@@ -301,7 +320,9 @@ export function FileImportModal({
         )}
 
         {step === 3 && (
-          <ImportPreviewTable preview={preview} onCategoryChange={handleCategoryChange} />
+          <div className="flex-1 mt-4">
+            <ImportPreviewTable preview={preview} onCategoryChange={handleCategoryChange} />
+          </div>
         )}
 
         <div className="flex justify-between mt-4">
