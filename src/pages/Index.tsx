@@ -1,12 +1,17 @@
-/* Home Page - Replace this page layout, components, content, behavior with what you want and translate to the language of the user */
-const Index = () => {
+import { StatCards } from '@/components/dashboard/StatCards'
+import { CashFlowChart } from '@/components/dashboard/CashFlowChart'
+import { CropStatusWidget } from '@/components/dashboard/CropStatusWidget'
+import { RecentTransactions } from '@/components/dashboard/RecentTransactions'
+
+export default function Index() {
   return (
-    <div className="container mx-auto py-8 px-4">
-      <h1 className="text-3xl font-bold mb-6">
-        This is a example page ready to be rewritten with your own content
-      </h1>
+    <div className="space-y-6">
+      <StatCards />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <CashFlowChart />
+        <CropStatusWidget />
+      </div>
+      <RecentTransactions />
     </div>
   )
 }
-
-export default Index
