@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/select'
 import useAgroStore from '@/stores/useAgroStore'
 import useAuthStore from '@/stores/useAuthStore'
+import useEquipmentStore from '@/stores/useEquipmentStore'
 import { Transaction, TransactionType, CropType } from '@/types'
 import { useToast } from '@/hooks/use-toast'
 
@@ -31,6 +32,7 @@ interface QuickAddModalProps {
 export function QuickAddModal({ open, onOpenChange }: QuickAddModalProps) {
   const { addTransaction } = useAgroStore()
   const { role, userName } = useAuthStore()
+  const { equipments } = useEquipmentStore()
   const { toast } = useToast()
 
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
@@ -39,6 +41,7 @@ export function QuickAddModal({ open, onOpenChange }: QuickAddModalProps) {
   const [type, setType] = useState<TransactionType>('despesa')
   const [category, setCategory] = useState('Outros')
   const [crop, setCrop] = useState<CropType>('Geral')
+  const [equipmentId, setEquipmentId] = useState<string>('none')
   const [comments, setComments] = useState('')
 
   const handleSave = () => {
@@ -81,6 +84,7 @@ export function QuickAddModal({ open, onOpenChange }: QuickAddModalProps) {
       type,
       category,
       crop,
+      equipmentId: equipmentId !== 'none' ? equipmentId : undefined,
       comments,
       status: role === 'collaborator' ? 'pending' : 'approved',
       collaboratorName: role === 'collaborator' ? userName : undefined,
@@ -99,13 +103,14 @@ export function QuickAddModal({ open, onOpenChange }: QuickAddModalProps) {
     setDescription('')
     setAmount('')
     setComments('')
+    setEquipmentId('none')
     setDate(new Date().toISOString().split('T')[0])
     onOpenChange(false)
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Novo Lançamento Rápido</DialogTitle>
           <DialogDescription>
@@ -154,7 +159,27 @@ export function QuickAddModal({ open, onOpenChange }: QuickAddModalProps) {
               />
             </div>
             <div className="space-y-2">
-              <Label>Cultura</Label>
+              <Label>Categoria</Label>
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Insumos">Insumos</SelectItem>
+                  <SelectItem value="Manutenção">Manutenção</SelectItem>
+                  <SelectItem value="Peças">Peças</SelectItem>
+                  <SelectItem value="Combustível">Combustível</SelectItem>
+                  <SelectItem value="Mão de Obra">Mão de Obra</SelectItem>
+                  <SelectItem value="Retirada de Sócios">Retirada de Sócios</SelectItem>
+                  <SelectItem value="Venda">Venda</SelectItem>
+                  <SelectItem value="Outros">Outros</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Cultura (Opcional)</Label>
               <Select value={crop} onValueChange={(val: CropType) => setCrop(val)}>
                 <SelectTrigger>
                   <SelectValue />
@@ -163,25 +188,26 @@ export function QuickAddModal({ open, onOpenChange }: QuickAddModalProps) {
                   <SelectItem value="Soja">Soja</SelectItem>
                   <SelectItem value="Milho">Milho</SelectItem>
                   <SelectItem value="Cana">Cana</SelectItem>
-                  <SelectItem value="Geral">Geral</SelectItem>
+                  <SelectItem value="Geral">Geral / Não se aplica</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-          </div>
-          <div className="space-y-2">
-            <Label>Categoria</Label>
-            <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Insumos">Insumos</SelectItem>
-                <SelectItem value="Manutenção">Manutenção</SelectItem>
-                <SelectItem value="Mão de Obra">Mão de Obra</SelectItem>
-                <SelectItem value="Venda">Venda</SelectItem>
-                <SelectItem value="Outros">Outros</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="space-y-2">
+              <Label>Equipamento/Veículo (Opcional)</Label>
+              <Select value={equipmentId} onValueChange={setEquipmentId}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nenhum</SelectItem>
+                  {equipments.map((eq) => (
+                    <SelectItem key={eq.id} value={eq.id}>
+                      {eq.name} ({eq.identifier})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <div className="space-y-2">
             <Label>Comentários</Label>

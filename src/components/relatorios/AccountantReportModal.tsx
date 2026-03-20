@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Printer, FileText } from 'lucide-react'
+import { Printer } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -19,6 +19,7 @@ import {
 import { Label } from '@/components/ui/label'
 import useAgroStore from '@/stores/useAgroStore'
 import useInvoiceStore from '@/stores/useInvoiceStore'
+import useEquipmentStore from '@/stores/useEquipmentStore'
 import { formatBRL, formatDate } from '@/lib/format'
 
 interface AccountantReportModalProps {
@@ -31,6 +32,7 @@ export function AccountantReportModal({ open, onOpenChange }: AccountantReportMo
 
   const { transactions } = useAgroStore()
   const { invoices } = useInvoiceStore()
+  const { equipments } = useEquipmentStore()
 
   // Filter only approved transactions for the selected year
   const filteredTxs = transactions.filter(
@@ -41,14 +43,12 @@ export function AccountantReportModal({ open, onOpenChange }: AccountantReportMo
 
   const totalReceitas = filteredTxs
     .filter((t) => t.type === 'receita')
-    .reduce((a, b) => a + b.amount, 0)
+    .reduce((a, b) => a + Math.abs(b.amount), 0)
   const totalDespesas = filteredTxs
     .filter((t) => t.type === 'despesa')
-    .reduce((a, b) => a + b.amount, 0)
+    .reduce((a, b) => a + Math.abs(b.amount), 0)
 
   const handlePrint = () => {
-    // Timeout allows dialog to potentially visually update if needed,
-    // but the print CSS will take over the whole screen anyway.
     setTimeout(() => {
       window.print()
     }, 100)
@@ -57,7 +57,6 @@ export function AccountantReportModal({ open, onOpenChange }: AccountantReportMo
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        {/* We add print:hidden to the dialog content so it doesn't show up in the print view */}
         <DialogContent className="sm:max-w-[500px] print:hidden">
           <DialogHeader>
             <DialogTitle>Relatório para o Contador</DialogTitle>
@@ -113,7 +112,6 @@ export function AccountantReportModal({ open, onOpenChange }: AccountantReportMo
         </DialogContent>
       </Dialog>
 
-      {/* Print View Portal Container - Only visible during window.print() */}
       {open && (
         <style type="text/css">
           {`
@@ -212,26 +210,33 @@ export function AccountantReportModal({ open, onOpenChange }: AccountantReportMo
                 <tr className="bg-gray-100 border-b-2 border-gray-300">
                   <th className="py-2 px-2">Data</th>
                   <th className="py-2 px-2">Descrição</th>
-                  <th className="py-2 px-2">Cultura</th>
+                  <th className="py-2 px-2">Equip./Cultura</th>
                   <th className="py-2 px-2 text-right">Valor</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredTxs
                   .sort((a, b) => a.date.localeCompare(b.date))
-                  .map((tx) => (
-                    <tr key={tx.id} className="border-b border-gray-200 print-break-inside-avoid">
-                      <td className="py-2 px-2">{formatDate(tx.date)}</td>
-                      <td className="py-2 px-2">
-                        <span className="font-medium">{tx.description}</span>
-                        <span className="block text-xs text-gray-500">{tx.category}</span>
-                      </td>
-                      <td className="py-2 px-2">{tx.crop}</td>
-                      <td className="py-2 px-2 text-right font-medium">
-                        {tx.type === 'despesa' ? '-' : '+'} {formatBRL(tx.amount)}
-                      </td>
-                    </tr>
-                  ))}
+                  .map((tx) => {
+                    const eqName = tx.equipmentId
+                      ? equipments.find((e) => e.id === tx.equipmentId)?.name || 'Removido'
+                      : ''
+                    return (
+                      <tr key={tx.id} className="border-b border-gray-200 print-break-inside-avoid">
+                        <td className="py-2 px-2">{formatDate(tx.date)}</td>
+                        <td className="py-2 px-2">
+                          <span className="font-medium">{tx.description}</span>
+                          <span className="block text-xs text-gray-500">{tx.category}</span>
+                        </td>
+                        <td className="py-2 px-2 text-xs">
+                          {tx.crop} {eqName && ` | ${eqName}`}
+                        </td>
+                        <td className="py-2 px-2 text-right font-medium">
+                          {tx.type === 'despesa' ? '-' : '+'} {formatBRL(Math.abs(tx.amount))}
+                        </td>
+                      </tr>
+                    )
+                  })}
               </tbody>
             </table>
           ) : (

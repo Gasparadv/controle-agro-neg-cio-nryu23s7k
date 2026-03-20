@@ -73,7 +73,7 @@ export function MappingRulesModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px] print:hidden">
+      <DialogContent className="sm:max-w-[750px] print:hidden">
         <DialogHeader>
           <DialogTitle>Regras Inteligentes (De-Para)</DialogTitle>
           <DialogDescription>
@@ -83,11 +83,11 @@ export function MappingRulesModal({
         </DialogHeader>
 
         <div className="grid gap-4 py-4">
-          <div className="flex flex-col sm:flex-row items-end gap-2 bg-muted/50 p-4 rounded-lg border">
-            <div className="w-full space-y-1">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 bg-muted/50 p-4 rounded-lg border items-end">
+            <div className="w-full space-y-1 col-span-2 sm:col-span-1">
               <Label className="text-xs">Palavra-chave</Label>
               <Input
-                placeholder="Ex: agropecuaria"
+                placeholder="Ex: posto"
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
               />
@@ -113,9 +113,11 @@ export function MappingRulesModal({
                 <SelectContent>
                   <SelectItem value="Insumos">Insumos</SelectItem>
                   <SelectItem value="Manutenção">Manutenção</SelectItem>
-                  <SelectItem value="Mão de Obra">Mão de Obra</SelectItem>
-                  <SelectItem value="Venda">Venda</SelectItem>
+                  <SelectItem value="Peças">Peças</SelectItem>
                   <SelectItem value="Combustível">Combustível</SelectItem>
+                  <SelectItem value="Mão de Obra">Mão de Obra</SelectItem>
+                  <SelectItem value="Retirada de Sócios">Retirada</SelectItem>
+                  <SelectItem value="Venda">Venda</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -133,8 +135,8 @@ export function MappingRulesModal({
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={handleAdd} className="gap-2 shrink-0">
-              <Plus className="h-4 w-4" /> Adicionar
+            <Button onClick={handleAdd} className="gap-2 shrink-0 col-span-2 sm:col-span-1">
+              <Plus className="h-4 w-4" /> Add
             </Button>
           </div>
 

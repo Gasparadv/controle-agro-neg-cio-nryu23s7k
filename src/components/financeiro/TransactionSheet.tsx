@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/select'
 import { Transaction } from '@/types'
 import { useToast } from '@/hooks/use-toast'
+import useEquipmentStore from '@/stores/useEquipmentStore'
 
 interface TransactionSheetProps {
   transaction: Transaction | null
@@ -35,6 +36,7 @@ export function TransactionSheet({
   onSave,
 }: TransactionSheetProps) {
   const [formData, setFormData] = useState<Transaction | null>(null)
+  const { equipments } = useEquipmentStore()
   const { toast } = useToast()
 
   useEffect(() => {
@@ -46,13 +48,17 @@ export function TransactionSheet({
   if (!formData) return null
 
   const handleSave = () => {
-    // Ensure amount sign aligns with the selected type
     let finalAmt = Math.abs(formData.amount)
     if (formData.type === 'despesa') {
       finalAmt = -finalAmt
     }
 
-    onSave({ ...formData, amount: finalAmt })
+    const payload = { ...formData, amount: finalAmt }
+    if (payload.equipmentId === 'none') {
+      payload.equipmentId = undefined
+    }
+
+    onSave(payload)
     onOpenChange(false)
     toast({
       title: 'Transação Atualizada',
@@ -66,7 +72,7 @@ export function TransactionSheet({
         <SheetHeader>
           <SheetTitle>Editar Lançamento</SheetTitle>
           <SheetDescription>
-            Categorize e adicione comentários importantes para este registro financeiro.
+            Categorize e adicione comentários ou vínculos importantes para este registro financeiro.
           </SheetDescription>
         </SheetHeader>
         <div className="grid gap-6 py-6">
@@ -104,13 +110,36 @@ export function TransactionSheet({
               <SelectContent>
                 <SelectItem value="Insumos">Insumos</SelectItem>
                 <SelectItem value="Manutenção">Manutenção</SelectItem>
-                <SelectItem value="Mão de Obra">Mão de Obra</SelectItem>
+                <SelectItem value="Peças">Peças</SelectItem>
                 <SelectItem value="Combustível">Combustível</SelectItem>
+                <SelectItem value="Mão de Obra">Mão de Obra</SelectItem>
+                <SelectItem value="Retirada de Sócios">Retirada de Sócios</SelectItem>
                 <SelectItem value="Venda">Venda (Receita)</SelectItem>
                 <SelectItem value="Outros">Outros</SelectItem>
               </SelectContent>
             </Select>
           </div>
+
+          <div className="space-y-2">
+            <Label>Equipamento / Veículo</Label>
+            <Select
+              value={formData.equipmentId || 'none'}
+              onValueChange={(val: any) => setFormData({ ...formData, equipmentId: val })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Vincular a um equipamento" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Nenhum</SelectItem>
+                {equipments.map((eq) => (
+                  <SelectItem key={eq.id} value={eq.id}>
+                    {eq.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="space-y-2">
             <Label>Cultura Relacionada</Label>
             <Select
@@ -128,8 +157,9 @@ export function TransactionSheet({
               </SelectContent>
             </Select>
           </div>
+
           <div className="space-y-2">
-            <Label>Comentários (Importante)</Label>
+            <Label>Comentários</Label>
             <Textarea
               className="min-h-[100px]"
               placeholder="Ex: Referente ao talhão norte, nota fiscal #1234"

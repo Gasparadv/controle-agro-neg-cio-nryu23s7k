@@ -11,6 +11,7 @@ import {
   Map as MapIcon,
   CheckSquare,
   Users,
+  Tractor,
 } from 'lucide-react'
 import {
   SidebarProvider,
@@ -45,6 +46,7 @@ const titleMap: Record<string, string> = {
   '/financeiro': 'Controle Financeiro',
   '/estoque': 'Estoque de Insumos',
   '/culturas': 'Gestão de Culturas',
+  '/equipamentos': 'Frota e Maquinário',
   '/notas-fiscais': 'Notas Fiscais',
   '/relatorios': 'Relatórios Gerenciais',
   '/mapa': 'Mapa da Fazenda',
@@ -69,6 +71,7 @@ export function Layout() {
     { name: 'Financeiro', path: '/financeiro', icon: Wallet },
     { name: 'Estoque', path: '/estoque', icon: Boxes },
     { name: 'Culturas', path: '/culturas', icon: Sprout },
+    { name: 'Equipamentos', path: '/equipamentos', icon: Tractor },
     { name: 'Notas Fiscais', path: '/notas-fiscais', icon: FileText },
     { name: 'Relatórios', path: '/relatorios', icon: PieChart },
   ]

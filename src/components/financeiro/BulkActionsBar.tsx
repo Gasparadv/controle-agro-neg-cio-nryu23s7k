@@ -39,14 +39,16 @@ export function BulkActionsBar({
       </Select>
 
       <Select onValueChange={(val) => onUpdate({ category: val })}>
-        <SelectTrigger className="w-[140px] h-8 text-xs bg-muted border-none">
+        <SelectTrigger className="w-[150px] h-8 text-xs bg-muted border-none">
           <SelectValue placeholder="Definir Categoria" />
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="Insumos">Insumos</SelectItem>
           <SelectItem value="Manutenção">Manutenção</SelectItem>
-          <SelectItem value="Mão de Obra">Mão de Obra</SelectItem>
+          <SelectItem value="Peças">Peças</SelectItem>
           <SelectItem value="Combustível">Combustível</SelectItem>
+          <SelectItem value="Mão de Obra">Mão de Obra</SelectItem>
+          <SelectItem value="Retirada de Sócios">Retirada de Sócios</SelectItem>
           <SelectItem value="Venda">Venda</SelectItem>
           <SelectItem value="Outros">Outros</SelectItem>
         </SelectContent>

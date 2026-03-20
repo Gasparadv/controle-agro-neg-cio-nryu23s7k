@@ -35,6 +35,7 @@ export interface Transaction {
   collaboratorName?: string
   importBatchId?: string
   fitid?: string
+  equipmentId?: string
 }
 
 export interface MappingRule {
@@ -92,4 +93,18 @@ export interface FarmPlot {
   status: 'planting' | 'growing' | 'harvesting' | 'idle'
   history: FarmPlotHistory[]
   inputsUsed: FarmPlotInput[]
+}
+
+export type EquipmentType = 'Máquina' | 'Veículo' | 'Implemento'
+
+export interface Equipment {
+  id: string
+  name: string
+  type: EquipmentType
+  identifier: string
+  brand: string
+  acquisitionDate: string
+  acquisitionValue: number
+  saleDate?: string
+  saleValue?: number
 }

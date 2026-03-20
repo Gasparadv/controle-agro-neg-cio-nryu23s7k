@@ -20,8 +20,9 @@ import {
 } from '@/components/ui/select'
 import { formatBRL, formatDate } from '@/lib/format'
 import { Transaction } from '@/types'
-import { Clock, CheckCircle2, XCircle, AlertCircle, Trash2, Edit2 } from 'lucide-react'
+import { Clock, CheckCircle2, XCircle, AlertCircle, Trash2, Edit2, Tractor } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import useEquipmentStore from '@/stores/useEquipmentStore'
 
 interface TransactionTableProps {
   transactions: Transaction[]
@@ -44,6 +45,8 @@ export function TransactionTable({
   onSelectAll,
   onSelectRow,
 }: TransactionTableProps) {
+  const { equipments } = useEquipmentStore()
+
   const [editId, setEditId] = useState<string | null>(null)
   const [editField, setEditField] = useState<'category' | 'crop' | 'comments' | null>(null)
   const [editValue, setEditValue] = useState('')
@@ -96,6 +99,12 @@ export function TransactionTable({
 
   const allSelected = transactions.length > 0 && selectedIds.length === transactions.length
 
+  const getEquipmentName = (id?: string) => {
+    if (!id) return null
+    const eq = equipments.find((e) => e.id === id)
+    return eq ? eq.name : 'Equipamento Removido'
+  }
+
   return (
     <div className="rounded-md border bg-card shadow-subtle overflow-hidden">
       <Table>
@@ -109,6 +118,7 @@ export function TransactionTable({
             <TableHead className="w-[100px]">Data</TableHead>
             <TableHead>Descrição</TableHead>
             <TableHead>Categoria / Status</TableHead>
+            <TableHead className="hidden lg:table-cell">Equipamento</TableHead>
             <TableHead>Cultura</TableHead>
             <TableHead className="text-right">Valor / Tipo</TableHead>
             <TableHead className="hidden md:table-cell">Comentários</TableHead>
@@ -116,44 +126,108 @@ export function TransactionTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {transactions.map((tx) => (
-            <TableRow
-              key={tx.id}
-              onClick={() => onSelect(tx)}
-              className={cn(
-                'cursor-pointer hover:bg-muted/60 transition-colors',
-                tx.status === 'rejected' && 'opacity-60',
-                tx.type === 'indefinido' &&
-                  'bg-orange-500/5 hover:bg-orange-500/10 border-l-2 border-l-orange-500',
-                selectedIds.includes(tx.id) && 'bg-primary/5',
-              )}
-            >
-              <TableCell className="w-[40px] print:hidden" onClick={(e) => e.stopPropagation()}>
-                {onSelectRow && (
-                  <Checkbox
-                    checked={selectedIds.includes(tx.id)}
-                    onCheckedChange={(c) => onSelectRow(tx.id, c === true)}
-                  />
+          {transactions.map((tx) => {
+            const eqName = getEquipmentName(tx.equipmentId)
+            return (
+              <TableRow
+                key={tx.id}
+                onClick={() => onSelect(tx)}
+                className={cn(
+                  'cursor-pointer hover:bg-muted/60 transition-colors',
+                  tx.status === 'rejected' && 'opacity-60',
+                  tx.type === 'indefinido' &&
+                    'bg-orange-500/5 hover:bg-orange-500/10 border-l-2 border-l-orange-500',
+                  selectedIds.includes(tx.id) && 'bg-primary/5',
                 )}
-              </TableCell>
-              <TableCell className="font-medium whitespace-nowrap">{formatDate(tx.date)}</TableCell>
-              <TableCell>
-                <div className="font-medium flex items-center gap-2">
-                  {tx.type === 'indefinido' && (
-                    <AlertCircle className="h-4 w-4 text-orange-500 shrink-0" />
+              >
+                <TableCell className="w-[40px] print:hidden" onClick={(e) => e.stopPropagation()}>
+                  {onSelectRow && (
+                    <Checkbox
+                      checked={selectedIds.includes(tx.id)}
+                      onCheckedChange={(c) => onSelectRow(tx.id, c === true)}
+                    />
                   )}
-                  {tx.description}
-                </div>
-                {tx.status === 'rejected' && tx.rejectionReason && (
-                  <div className="text-xs text-destructive mt-1">
-                    Motivo recusa: {tx.rejectionReason}
+                </TableCell>
+                <TableCell className="font-medium whitespace-nowrap">
+                  {formatDate(tx.date)}
+                </TableCell>
+                <TableCell>
+                  <div className="font-medium flex items-center gap-2">
+                    {tx.type === 'indefinido' && (
+                      <AlertCircle className="h-4 w-4 text-orange-500 shrink-0" />
+                    )}
+                    {tx.description}
                   </div>
-                )}
-              </TableCell>
-              <TableCell>
-                <div className="flex flex-col items-start gap-1">
-                  {editId === tx.id && editField === 'category' ? (
-                    <div onClick={(e) => e.stopPropagation()} className="w-[130px]">
+                  {tx.status === 'rejected' && tx.rejectionReason && (
+                    <div className="text-xs text-destructive mt-1">
+                      Motivo: {tx.rejectionReason}
+                    </div>
+                  )}
+                  {eqName && (
+                    <div className="lg:hidden text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                      <Tractor className="h-3 w-3" /> {eqName}
+                    </div>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <div className="flex flex-col items-start gap-1">
+                    {editId === tx.id && editField === 'category' ? (
+                      <div onClick={(e) => e.stopPropagation()} className="w-[150px]">
+                        <Select
+                          defaultOpen
+                          value={editValue}
+                          onValueChange={(v) => saveEdit(tx, v)}
+                          onOpenChange={(o) => {
+                            if (!o) {
+                              setEditId(null)
+                              setEditField(null)
+                            }
+                          }}
+                        >
+                          <SelectTrigger className="h-7 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Insumos">Insumos</SelectItem>
+                            <SelectItem value="Manutenção">Manutenção</SelectItem>
+                            <SelectItem value="Peças">Peças</SelectItem>
+                            <SelectItem value="Combustível">Combustível</SelectItem>
+                            <SelectItem value="Mão de Obra">Mão de Obra</SelectItem>
+                            <SelectItem value="Retirada de Sócios">Retirada de Sócios</SelectItem>
+                            <SelectItem value="Venda">Venda</SelectItem>
+                            <SelectItem value="Outros">Outros</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    ) : (
+                      <div
+                        className="group flex items-center gap-1 cursor-pointer"
+                        onClick={(e) => startEdit(e, tx, 'category')}
+                      >
+                        <Badge
+                          variant="outline"
+                          className="font-normal border-muted-foreground/30 hover:bg-muted whitespace-nowrap"
+                        >
+                          {tx.category}
+                        </Badge>
+                        <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-100 text-muted-foreground print:hidden" />
+                      </div>
+                    )}
+                    {getStatusBadge(tx.status)}
+                  </div>
+                </TableCell>
+                <TableCell className="hidden lg:table-cell text-muted-foreground text-xs">
+                  {eqName ? (
+                    <div className="flex items-center gap-1.5 bg-muted/50 px-2 py-1 rounded w-fit">
+                      <Tractor className="h-3 w-3" /> {eqName}
+                    </div>
+                  ) : (
+                    '-'
+                  )}
+                </TableCell>
+                <TableCell>
+                  {editId === tx.id && editField === 'crop' ? (
+                    <div onClick={(e) => e.stopPropagation()} className="w-[120px]">
                       <Select
                         defaultOpen
                         value={editValue}
@@ -169,158 +243,115 @@ export function TransactionTable({
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Insumos">Insumos</SelectItem>
-                          <SelectItem value="Manutenção">Manutenção</SelectItem>
-                          <SelectItem value="Mão de Obra">Mão de Obra</SelectItem>
-                          <SelectItem value="Combustível">Combustível</SelectItem>
-                          <SelectItem value="Venda">Venda</SelectItem>
-                          <SelectItem value="Outros">Outros</SelectItem>
+                          <SelectItem value="Soja">Soja</SelectItem>
+                          <SelectItem value="Milho">Milho</SelectItem>
+                          <SelectItem value="Cana">Cana</SelectItem>
+                          <SelectItem value="Geral">Geral</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                   ) : (
                     <div
                       className="group flex items-center gap-1 cursor-pointer"
-                      onClick={(e) => startEdit(e, tx, 'category')}
+                      onClick={(e) => startEdit(e, tx, 'crop')}
                     >
-                      <Badge
-                        variant="outline"
-                        className="font-normal border-muted-foreground/30 hover:bg-muted"
-                      >
-                        {tx.category}
-                      </Badge>
+                      <span>{tx.crop}</span>
                       <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-100 text-muted-foreground print:hidden" />
                     </div>
                   )}
-                  {getStatusBadge(tx.status)}
-                </div>
-              </TableCell>
-              <TableCell>
-                {editId === tx.id && editField === 'crop' ? (
-                  <div onClick={(e) => e.stopPropagation()} className="w-[120px]">
-                    <Select
-                      defaultOpen
-                      value={editValue}
-                      onValueChange={(v) => saveEdit(tx, v)}
-                      onOpenChange={(o) => {
-                        if (!o) {
-                          setEditId(null)
-                          setEditField(null)
-                        }
-                      }}
+                </TableCell>
+                <TableCell className="text-right whitespace-nowrap">
+                  {tx.type === 'indefinido' ? (
+                    <div className="flex flex-col items-end gap-1.5 print:hidden">
+                      <span className="font-medium text-muted-foreground">
+                        {formatBRL(Math.abs(tx.amount))}
+                      </span>
+                      <div className="flex gap-1">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 px-2 text-[10px] bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onUpdate?.(tx, { type: 'receita' })
+                          }}
+                        >
+                          Receita
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 px-2 text-[10px] bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onUpdate?.(tx, { type: 'despesa' })
+                          }}
+                        >
+                          Despesa
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <span
+                      className={
+                        tx.type === 'receita'
+                          ? 'text-green-600 dark:text-green-500 font-medium'
+                          : 'text-destructive'
+                      }
                     >
-                      <SelectTrigger className="h-7 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Soja">Soja</SelectItem>
-                        <SelectItem value="Milho">Milho</SelectItem>
-                        <SelectItem value="Cana">Cana</SelectItem>
-                        <SelectItem value="Geral">Geral</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                ) : (
-                  <div
-                    className="group flex items-center gap-1 cursor-pointer"
-                    onClick={(e) => startEdit(e, tx, 'crop')}
-                  >
-                    <span>{tx.crop}</span>
-                    <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-100 text-muted-foreground print:hidden" />
-                  </div>
-                )}
-              </TableCell>
-              <TableCell className="text-right whitespace-nowrap">
-                {tx.type === 'indefinido' ? (
-                  <div className="flex flex-col items-end gap-1.5 print:hidden">
-                    <span className="font-medium text-muted-foreground">
+                      {tx.type === 'despesa' ? '- ' : '+ '}
                       {formatBRL(Math.abs(tx.amount))}
                     </span>
-                    <div className="flex gap-1">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-6 px-2 text-[10px] bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onUpdate?.(tx, { type: 'receita' })
-                        }}
-                      >
-                        Receita
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-6 px-2 text-[10px] bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onUpdate?.(tx, { type: 'despesa' })
-                        }}
-                      >
-                        Despesa
-                      </Button>
+                  )}
+                </TableCell>
+                <TableCell className="hidden md:table-cell text-muted-foreground max-w-[200px]">
+                  {editId === tx.id && editField === 'comments' ? (
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex items-center gap-1 w-full"
+                    >
+                      <Input
+                        autoFocus
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        onBlur={() => saveEdit(tx, editValue)}
+                        onKeyDown={(e) => e.key === 'Enter' && saveEdit(tx, editValue)}
+                        className="h-7 text-xs w-full"
+                      />
                     </div>
-                  </div>
-                ) : (
-                  <span
-                    className={
-                      tx.type === 'receita'
-                        ? 'text-green-600 dark:text-green-500 font-medium'
-                        : 'text-destructive'
-                    }
-                  >
-                    {tx.type === 'despesa' ? '- ' : '+ '}
-                    {formatBRL(Math.abs(tx.amount))}
-                  </span>
-                )}
-              </TableCell>
-              <TableCell className="hidden md:table-cell text-muted-foreground max-w-[200px]">
-                {editId === tx.id && editField === 'comments' ? (
-                  <div
-                    onClick={(e) => e.stopPropagation()}
-                    className="flex items-center gap-1 w-full"
-                  >
-                    <Input
-                      autoFocus
-                      value={editValue}
-                      onChange={(e) => setEditValue(e.target.value)}
-                      onBlur={() => saveEdit(tx, editValue)}
-                      onKeyDown={(e) => e.key === 'Enter' && saveEdit(tx, editValue)}
-                      className="h-7 text-xs w-full"
-                    />
-                  </div>
-                ) : (
-                  <div
-                    className="group flex items-center gap-1 cursor-pointer truncate"
-                    onClick={(e) => startEdit(e, tx, 'comments')}
-                  >
-                    <span className="truncate" title={tx.comments}>
-                      {tx.comments || '-'}
-                    </span>
-                    <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-100 text-muted-foreground shrink-0 print:hidden" />
-                  </div>
-                )}
-              </TableCell>
-              <TableCell className="text-right pr-4 print:hidden">
-                {onDelete && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onDelete(tx)
-                    }}
-                    className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                )}
-              </TableCell>
-            </TableRow>
-          ))}
+                  ) : (
+                    <div
+                      className="group flex items-center gap-1 cursor-pointer truncate"
+                      onClick={(e) => startEdit(e, tx, 'comments')}
+                    >
+                      <span className="truncate" title={tx.comments}>
+                        {tx.comments || '-'}
+                      </span>
+                      <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-100 text-muted-foreground shrink-0 print:hidden" />
+                    </div>
+                  )}
+                </TableCell>
+                <TableCell className="text-right pr-4 print:hidden">
+                  {onDelete && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onDelete(tx)
+                      }}
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </TableCell>
+              </TableRow>
+            )
+          })}
           {transactions.length === 0 && (
             <TableRow>
-              <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+              <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
                 {emptyStateMessage || 'Nenhum lançamento encontrado.'}
               </TableCell>
             </TableRow>

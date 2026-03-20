@@ -41,6 +41,7 @@ import { QuickAddModal } from '@/components/financeiro/QuickAddModal'
 import { BulkActionsBar } from '@/components/financeiro/BulkActionsBar'
 import { MappingRulesModal } from '@/components/financeiro/MappingRulesModal'
 import useAgroStore from '@/stores/useAgroStore'
+import useEquipmentStore from '@/stores/useEquipmentStore'
 import { useToast } from '@/hooks/use-toast'
 import { exportToCSV } from '@/lib/export'
 import { Transaction } from '@/types'
@@ -55,6 +56,7 @@ export default function Financeiro() {
     bulkUpdateTransactions,
     bulkDeleteTransactions,
   } = useAgroStore()
+  const { equipments } = useEquipmentStore()
   const { toast } = useToast()
 
   const [filterCrop, setFilterCrop] = useState<string>('Todos')
@@ -243,7 +245,7 @@ export default function Financeiro() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => exportToCSV(filteredTransactions)}>
+                <DropdownMenuItem onClick={() => exportToCSV(filteredTransactions, equipments)}>
                   <Download className="h-4 w-4 mr-2" /> Exportar CSV
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setTimeout(() => window.print(), 100)}>

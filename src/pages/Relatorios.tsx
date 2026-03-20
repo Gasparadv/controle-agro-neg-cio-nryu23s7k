@@ -5,6 +5,7 @@ import { ExpensePieChart } from '@/components/relatorios/ExpensePieChart'
 import { RevenueChart } from '@/components/relatorios/RevenueChart'
 import { AccountantReportModal } from '@/components/relatorios/AccountantReportModal'
 import { CropInvestmentChart } from '@/components/relatorios/CropInvestmentChart'
+import { CustomReportGenerator } from '@/components/relatorios/CustomReportGenerator'
 
 export default function Relatorios() {
   const [isAccountantModalOpen, setIsAccountantModalOpen] = useState(false)
@@ -13,14 +14,14 @@ export default function Relatorios() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex flex-col gap-2">
-          <h2 className="text-2xl font-bold tracking-tight">Relatórios Financeiros</h2>
+          <h2 className="text-2xl font-bold tracking-tight">Relatórios Gerenciais</h2>
           <p className="text-muted-foreground">
-            Análise detalhada de rentabilidade e custos operacionais.
+            Análise detalhada de rentabilidade, custos operacionais e filtragem avançada.
           </p>
         </div>
-        <Button onClick={() => setIsAccountantModalOpen(true)} className="gap-2">
+        <Button onClick={() => setIsAccountantModalOpen(true)} className="gap-2 shrink-0">
           <FileDown className="h-4 w-4" />
-          Gerar Relatório Contador (PDF)
+          Relatório para Contador
         </Button>
       </div>
 
@@ -37,8 +38,7 @@ export default function Relatorios() {
         <CropInvestmentChart />
       </div>
 
-      {/* Spacer to simulate more content down the page if needed */}
-      <div className="h-12"></div>
+      <CustomReportGenerator />
 
       <AccountantReportModal open={isAccountantModalOpen} onOpenChange={setIsAccountantModalOpen} />
     </div>
