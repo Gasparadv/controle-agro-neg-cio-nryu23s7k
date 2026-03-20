@@ -21,7 +21,7 @@ import { useToast } from '@/hooks/use-toast'
 import useAgroStore from '@/stores/useAgroStore'
 import useAuthStore from '@/stores/useAuthStore'
 import { Transaction, TransactionType, CropType } from '@/types'
-import { formatBRL } from '@/lib/format'
+import { formatBRL, formatDate } from '@/lib/format'
 import {
   parseAmount,
   parseDate,
@@ -47,6 +47,9 @@ export function FileImportModal({
   const [preview, setPreview] = useState<PreviewRow[]>([])
   const [summary, setSummary] = useState<{
     total: number
+    imported: number
+    duplicates: number
+    errors: number
     debits: number
     credits: number
     undefined: number
@@ -60,6 +63,18 @@ export function FileImportModal({
   const { transactions, addTransactions, addImportBatch, mappingRules } = useAgroStore()
   const { role } = useAuthStore()
   const { toast } = useToast()
+
+  const buildExistingTxMap = () => {
+    const map = new Map<string, Transaction>()
+    transactions.forEach((tx) => {
+      if (tx.fitid) map.set(`fitid:${tx.fitid}`, tx)
+      map.set(
+        `val:${tx.date}|${Math.abs(tx.amount)}|${tx.type}|${(tx.description || '').toLowerCase()}`,
+        tx,
+      )
+    })
+    return map
+  }
 
   const categorizeDescWithRules = (desc: string) => {
     let cat = 'Outros'
@@ -117,14 +132,7 @@ export function FileImportModal({
 
     startTransition(() => {
       const p: PreviewRow[] = []
-
-      const existingFitids = new Set(transactions.filter((t) => t.fitid).map((t) => t.fitid))
-      const existingTxSet = new Set(
-        transactions.map(
-          (tx) =>
-            `${tx.date}|${Math.abs(tx.amount)}|${tx.type}|${(tx.description || '').toLowerCase()}`,
-        ),
-      )
+      const existingMap = buildExistingTxMap()
 
       for (let i = 0; i < data.length; i++) {
         const item = data[i]
@@ -163,10 +171,16 @@ export function FileImportModal({
 
         const descLower = typeof desc === 'string' ? desc.toLowerCase() : ''
 
-        const isDup =
-          !isInvalid &&
-          ((item.fitid && existingFitids.has(item.fitid)) ||
-            existingTxSet.has(`${dateStr}|${Math.abs(parsedAmt)}|${detectedType}|${descLower}`))
+        const dupByFitid = item.fitid ? existingMap.get(`fitid:${item.fitid}`) : undefined
+        const dupByVal = existingMap.get(
+          `val:${dateStr}|${Math.abs(parsedAmt)}|${detectedType}|${descLower}`,
+        )
+        const dupTx = dupByFitid || dupByVal
+
+        const isDup = !isInvalid && !!dupTx
+        const duplicateReason = dupTx
+          ? `Idêntico a: ${dupTx.description} (${formatDate(dupTx.date)})`
+          : undefined
 
         p.push({
           index: i,
@@ -182,6 +196,7 @@ export function FileImportModal({
           errorMsg,
           rawAmt: String(item.rawAmt || ''),
           fitid: item.fitid,
+          duplicateReason,
         })
       }
 
@@ -294,12 +309,7 @@ export function FileImportModal({
         amtIdx = 2
       }
 
-      const existingTxSet = new Set(
-        transactions.map(
-          (tx) =>
-            `${tx.date}|${Math.abs(tx.amount)}|${tx.type}|${(tx.description || '').toLowerCase()}`,
-        ),
-      )
+      const existingMap = buildExistingTxMap()
 
       for (let i = 0; i < data.length; i++) {
         if (i === headerRowIdx) continue
@@ -404,10 +414,15 @@ export function FileImportModal({
 
         const descLower = typeof desc === 'string' ? desc.toLowerCase() : ''
 
-        const isDup =
-          !isInvalid &&
-          detectedType !== '' &&
-          existingTxSet.has(`${dateStr}|${Math.abs(parsedAmt)}|${detectedType}|${descLower}`)
+        const dupTx =
+          detectedType !== ''
+            ? existingMap.get(`val:${dateStr}|${Math.abs(parsedAmt)}|${detectedType}|${descLower}`)
+            : undefined
+
+        const isDup = !isInvalid && !!dupTx
+        const duplicateReason = dupTx
+          ? `Idêntico a: ${dupTx.description} (${formatDate(dupTx.date)})`
+          : undefined
 
         p.push({
           index: i,
@@ -422,6 +437,7 @@ export function FileImportModal({
           isInvalid,
           errorMsg,
           rawAmt: String(rawAmt || ''),
+          duplicateReason,
         })
       }
 
@@ -526,6 +542,8 @@ export function FileImportModal({
     const batchId = `batch-${Date.now()}`
 
     const validToImport = preview.filter((r) => !r.isDuplicate && !r.isInvalid)
+    const duplicatesCount = preview.filter((r) => r.isDuplicate).length
+    const errorsCount = preview.filter((r) => r.isInvalid).length
 
     if (validToImport.some((r) => r.type === '')) {
       toast({
@@ -540,7 +558,7 @@ export function FileImportModal({
       toast({
         variant: 'destructive',
         title: 'Aviso',
-        description: 'Nenhum lançamento válido para importar.',
+        description: 'Nenhum lançamento válido para importar. Verifique os erros ou duplicados.',
       })
       handleClose()
       return
@@ -584,7 +602,10 @@ export function FileImportModal({
     const creditsAmount = creditsTxs.reduce((sum, t) => sum + Math.abs(t.amount), 0)
 
     setSummary({
-      total: txs.length,
+      total: preview.length,
+      imported: txs.length,
+      duplicates: duplicatesCount,
+      errors: errorsCount,
       debits: debitsTxs.length,
       credits: creditsTxs.length,
       undefined: undef,
@@ -619,14 +640,18 @@ export function FileImportModal({
       const r = { ...copy[index], type: newType }
 
       if (!r.isInvalid) {
-        r.isDuplicate = transactions.some(
+        const dup = transactions.find(
           (tx) =>
             (r.fitid && tx.fitid === r.fitid) ||
             (tx.date === r.date &&
-              tx.amount === (r.type === 'despesa' ? -Math.abs(r.amount) : Math.abs(r.amount)) &&
+              Math.abs(tx.amount) === Math.abs(r.amount) &&
               tx.type === r.type &&
               (tx.description || '').toLowerCase() === (r.desc || '').toLowerCase()),
         )
+        r.isDuplicate = !!dup
+        r.duplicateReason = dup
+          ? `Idêntico a: ${dup.description} (${formatDate(dup.date)})`
+          : undefined
       }
       copy[index] = r
       return copy
@@ -643,13 +668,13 @@ export function FileImportModal({
 
   return (
     <Dialog open={open} onOpenChange={(val) => !val && handleClose()}>
-      <DialogContent className="sm:max-w-[750px] overflow-hidden flex flex-col max-h-[90vh]">
+      <DialogContent className="sm:max-w-[850px] overflow-hidden flex flex-col max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>Importar Extrato (OFX / CSV / Excel)</DialogTitle>
           <DialogDescription>
             {step === 1 && 'Faça o upload do seu arquivo de extrato (.ofx, .csv, .xlsx, .xls).'}
             {step === 2 && 'O arquivo possui múltiplas abas. Selecione qual deseja importar.'}
-            {step === 3 && 'Confirme as categorizações e salve seus registros.'}
+            {step === 3 && 'Revise os dados antes de importar. Erros e duplicados serão ignorados.'}
             {step === 4 && 'Resumo do processamento do lote.'}
           </DialogDescription>
         </DialogHeader>
@@ -720,30 +745,48 @@ export function FileImportModal({
         )}
 
         {step === 4 && summary && (
-          <div className="flex flex-col items-center justify-center py-10 gap-4 animate-in fade-in zoom-in duration-300">
-            <CheckCircle2 className="h-16 w-16 text-green-500" />
+          <div className="flex flex-col items-center justify-center py-6 gap-2 animate-in fade-in zoom-in duration-300">
+            <CheckCircle2 className="h-16 w-16 text-green-500 mb-2" />
             <h3 className="text-xl font-semibold">Importação Concluída!</h3>
-            <div className="flex flex-col gap-3 mt-4 bg-muted/30 p-6 rounded-lg w-full max-w-sm">
+            <div className="flex flex-col gap-3 mt-4 bg-muted/30 p-6 rounded-lg w-full max-w-md border shadow-sm">
               <div className="flex justify-between items-center border-b border-border/50 pb-2">
-                <span className="text-muted-foreground">Total de Registros</span>
+                <span className="text-muted-foreground">Total de Linhas Lidas</span>
                 <span className="font-bold text-lg">{summary.total}</span>
               </div>
               <div className="flex justify-between items-center border-b border-border/50 pb-2">
-                <span className="text-muted-foreground">Débitos ({summary.debits})</span>
-                <span className="font-bold text-destructive">
-                  {formatBRL(summary.debitsAmount)}
+                <span className="text-muted-foreground font-medium">Registros Importados</span>
+                <span className="font-bold text-green-600 dark:text-green-500 text-lg">
+                  {summary.imported}
                 </span>
               </div>
-              <div className="flex justify-between items-center border-b border-border/50 pb-2">
-                <span className="text-muted-foreground">Créditos ({summary.credits})</span>
-                <span className="font-bold text-green-600 dark:text-green-500">
-                  {formatBRL(summary.creditsAmount)}
+              {summary.duplicates > 0 && (
+                <div className="flex justify-between items-center border-b border-border/50 pb-2">
+                  <span className="text-muted-foreground">Ignorados (Duplicados)</span>
+                  <span className="font-bold text-orange-500">{summary.duplicates}</span>
+                </div>
+              )}
+              {summary.errors > 0 && (
+                <div className="flex justify-between items-center border-b border-border/50 pb-2">
+                  <span className="text-muted-foreground">Ignorados (Erros de Formato)</span>
+                  <span className="font-bold text-destructive">{summary.errors}</span>
+                </div>
+              )}
+              <div className="flex justify-between items-center pt-2">
+                <span className="text-muted-foreground text-sm">Total Despesas</span>
+                <span className="font-semibold text-destructive text-sm">
+                  {formatBRL(summary.debitsAmount)} ({summary.debits} un)
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground text-sm">Total Receitas</span>
+                <span className="font-semibold text-green-600 dark:text-green-500 text-sm">
+                  {formatBRL(summary.creditsAmount)} ({summary.credits} un)
                 </span>
               </div>
               {summary.undefined > 0 && (
-                <div className="flex justify-between items-center pb-1">
-                  <span className="text-muted-foreground">Não Definidos</span>
-                  <span className="font-bold text-orange-500">{summary.undefined}</span>
+                <div className="flex justify-between items-center pt-1 border-t border-border/50 mt-1">
+                  <span className="text-muted-foreground text-sm">Não Definidos (Atenção)</span>
+                  <span className="font-bold text-orange-500 text-sm">{summary.undefined}</span>
                 </div>
               )}
             </div>
@@ -778,14 +821,19 @@ export function FileImportModal({
           )}
 
           {step === 3 && (
-            <Button onClick={handleImport} disabled={isPending} className="gap-2">
-              <CheckCircle2 className="h-4 w-4" /> Confirmar Importação
-            </Button>
+            <div className="flex w-full justify-between items-center">
+              <span className="text-xs text-muted-foreground ml-2 hidden sm:block">
+                Linhas identificadas com erros ou já existentes serão ignoradas.
+              </span>
+              <Button onClick={handleImport} disabled={isPending} className="gap-2 ml-auto">
+                <CheckCircle2 className="h-4 w-4" /> Confirmar Importação
+              </Button>
+            </div>
           )}
 
           {step === 4 && (
             <Button onClick={handleClose} className="w-full">
-              Fechar Janela
+              Fechar e Atualizar Lista
             </Button>
           )}
         </div>

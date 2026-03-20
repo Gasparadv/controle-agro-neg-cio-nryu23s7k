@@ -63,7 +63,11 @@ export const parseDate = (d: string | number | Date | undefined | null): string 
     if (p.length === 3) {
       if (p[2].length === 4) return `${p[2]}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}`
       if (p[0].length === 4) return `${p[0]}-${p[1].padStart(2, '0')}-${p[2].padStart(2, '0')}`
-      if (p[2].length === 2) return `20${p[2]}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}`
+      if (p[2].length === 2) {
+        const year = parseInt(p[2], 10)
+        const fullYear = year < 50 ? `20${p[2].padStart(2, '0')}` : `19${p[2].padStart(2, '0')}`
+        return `${fullYear}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}`
+      }
     }
   }
   const match = str.match(/(\d{4})-(\d{2})-(\d{2})/)
