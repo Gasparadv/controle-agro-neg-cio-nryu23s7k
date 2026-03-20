@@ -5,6 +5,8 @@ export const parseAmount = (val: string | number | undefined | null): number => 
   if (typeof val === 'number') return val
 
   const strVal = String(val).trim()
+  if (!strVal || typeof strVal !== 'string') return 0
+
   const isNegative =
     strVal.includes('-') || /^\(.*\)$/.test(strVal) || /([0-9.,]+)\s*D/i.test(strVal)
 
@@ -48,7 +50,9 @@ export const parseAmount = (val: string | number | undefined | null): number => 
 export const parseDate = (d: string | number | Date | undefined | null): string => {
   if (d === undefined || d === null || d === '') return ''
   if (d instanceof Date) return d.toISOString().split('T')[0]
+
   let str = String(d).trim()
+  if (!str || typeof str !== 'string') return ''
 
   if (str.match(/^\d{1,2}[-.]\d{1,2}[-.]\d{2,4}$/)) {
     str = str.replace(/[-.]/g, '/')
@@ -81,10 +85,14 @@ export const readExcelFile = async (file: File) => {
 export const getSheetData = (wb: XLSX.WorkBook, sheetName: string): string[][] => {
   const ws = wb.Sheets[sheetName]
   const rows = XLSX.utils.sheet_to_json<any[]>(ws, { header: 1, raw: false, dateNF: 'yyyy-mm-dd' })
-  return rows.map((row) => row.map((cell) => String(cell ?? '')))
+  return rows.map((row) => {
+    if (!row || !Array.isArray(row)) return []
+    return row.map((cell) => String(cell ?? ''))
+  })
 }
 
 export const parseCsvFile = (content: string): string[][] => {
+  if (!content || typeof content !== 'string') return []
   const delimiter = content.includes(';') ? ';' : ','
   return content
     .split('\n')
@@ -92,6 +100,7 @@ export const parseCsvFile = (content: string): string[][] => {
 }
 
 export const parseOfxFile = (content: string): any[] => {
+  if (!content || typeof content !== 'string') return []
   const transactions: any[] = []
 
   const blocks = content.split(/<STMTTRN>/i).slice(1)

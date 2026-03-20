@@ -59,57 +59,65 @@ export function FileImportModal({
   const { toast } = useToast()
 
   const categorizeDesc = (desc: string) => {
+    if (!desc || typeof desc !== 'string') return 'Outros'
     const d = desc.toLowerCase()
-    if (d.includes('posto') || d.includes('combustível') || d.includes('diesel'))
-      return 'Combustível'
-    if (
-      d.includes('oficina') ||
-      d.includes('trator') ||
-      d.includes('manutenção') ||
-      d.includes('peça')
-    )
-      return 'Manutenção'
-    if (
-      d.includes('semente') ||
-      d.includes('fertilizante') ||
-      d.includes('adubo') ||
-      d.includes('defensivo') ||
-      d.includes('npk')
-    )
-      return 'Insumos'
-    if (
-      d.includes('salário') ||
-      d.includes('pagamento') ||
-      d.includes('diária') ||
-      d.includes('mão de obra')
-    )
-      return 'Mão de Obra'
-    if (
-      d.includes('venda') ||
-      d.includes('recebimento') ||
-      d.includes('safra') ||
-      d.includes('soja') ||
-      d.includes('milho')
-    )
-      return 'Venda'
+
+    if (d && typeof d === 'string') {
+      if (d.includes('posto') || d.includes('combustível') || d.includes('diesel'))
+        return 'Combustível'
+      if (
+        d.includes('oficina') ||
+        d.includes('trator') ||
+        d.includes('manutenção') ||
+        d.includes('peça')
+      )
+        return 'Manutenção'
+      if (
+        d.includes('semente') ||
+        d.includes('fertilizante') ||
+        d.includes('adubo') ||
+        d.includes('defensivo') ||
+        d.includes('npk')
+      )
+        return 'Insumos'
+      if (
+        d.includes('salário') ||
+        d.includes('pagamento') ||
+        d.includes('diária') ||
+        d.includes('mão de obra')
+      )
+        return 'Mão de Obra'
+      if (
+        d.includes('venda') ||
+        d.includes('recebimento') ||
+        d.includes('safra') ||
+        d.includes('soja') ||
+        d.includes('milho')
+      )
+        return 'Venda'
+    }
     return 'Outros'
   }
 
   const validateAndPreviewOfx = (data: any[]) => {
+    if (!data || !Array.isArray(data)) return
+
     startTransition(() => {
       const p: PreviewRow[] = []
 
       const existingFitids = new Set(transactions.filter((t) => t.fitid).map((t) => t.fitid))
       const existingTxSet = new Set(
         transactions.map(
-          (tx) => `${tx.date}|${Math.abs(tx.amount)}|${tx.type}|${tx.description.toLowerCase()}`,
+          (tx) =>
+            `${tx.date}|${Math.abs(tx.amount)}|${tx.type}|${(tx.description || '').toLowerCase()}`,
         ),
       )
 
       for (let i = 0; i < data.length; i++) {
         const item = data[i]
+        if (!item) continue
 
-        const dateMatch = item.rawDate.match(/^(\d{4})(\d{2})(\d{2})/)
+        const dateMatch = (item.rawDate || '').match(/^(\d{4})(\d{2})(\d{2})/)
         let dateStr = ''
         let isDateValid = false
         if (dateMatch) {
@@ -137,7 +145,7 @@ export function FileImportModal({
         const detectedType = parsedAmt < 0 ? 'despesa' : 'receita'
         const desc = item.desc || 'Transação OFX'
         const cat = categorizeDesc(desc)
-        const descLower = desc.toLowerCase()
+        const descLower = typeof desc === 'string' ? desc.toLowerCase() : ''
 
         const isDup =
           !isInvalid &&
@@ -167,6 +175,16 @@ export function FileImportModal({
   }
 
   const validateAndPreview = (data: string[][]) => {
+    if (!data || !Array.isArray(data)) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro',
+        description: 'Dados inválidos para importação.',
+      })
+      setStep(1)
+      return
+    }
+
     startTransition(() => {
       const p: PreviewRow[] = []
 
@@ -180,32 +198,64 @@ export function FileImportModal({
       let headerRowIdx = -1
 
       for (let i = 0; i < Math.min(20, data.length); i++) {
-        const rowStr = data[i].map((c) => String(c).toLowerCase().trim())
-        if (rowStr.some((c) => c.includes('data') || c.includes('vencimento'))) {
+        const row = data[i]
+        if (!row || !Array.isArray(row)) continue
+
+        const rowStr = row.map((c) =>
+          c !== undefined && c !== null ? String(c).toLowerCase().trim() : '',
+        )
+
+        const hasDateOrVenc = rowStr.some(
+          (c) => c && typeof c === 'string' && (c.includes('data') || c.includes('vencimento')),
+        )
+
+        if (hasDateOrVenc) {
           const d = rowStr.findIndex(
             (c) =>
-              c === 'data' || c === 'vencimento' || c.includes('data') || c.includes('vencimento'),
+              c &&
+              typeof c === 'string' &&
+              (c === 'data' ||
+                c === 'vencimento' ||
+                c.includes('data') ||
+                c.includes('vencimento')),
           )
           const de = rowStr.findIndex(
-            (c) => c.includes('descri') || c.includes('histórico') || c.includes('historico'),
+            (c) =>
+              c &&
+              typeof c === 'string' &&
+              (c.includes('descri') || c.includes('histórico') || c.includes('historico')),
           )
           const a = rowStr.findIndex(
-            (c) => c.includes('valor') || c.includes('quantia') || c.includes('montante'),
+            (c) =>
+              c &&
+              typeof c === 'string' &&
+              (c.includes('valor') || c.includes('quantia') || c.includes('montante')),
           )
           const t = rowStr.findIndex(
             (c) =>
-              c === 'tipo' ||
-              c === 'natureza' ||
-              c === 'd/c' ||
-              c === 'situação' ||
-              c === 'situacao',
+              c &&
+              typeof c === 'string' &&
+              (c === 'tipo' ||
+                c === 'natureza' ||
+                c === 'd/c' ||
+                c === 'situação' ||
+                c === 'situacao'),
           )
-          const cat = rowStr.findIndex((c) => c.includes('categoria') || c.includes('classifica'))
+          const cat = rowStr.findIndex(
+            (c) =>
+              c && typeof c === 'string' && (c.includes('categoria') || c.includes('classifica')),
+          )
           const crop = rowStr.findIndex(
-            (c) => c.includes('cultura') || c.includes('safra') || c === 'crop',
+            (c) =>
+              c &&
+              typeof c === 'string' &&
+              (c.includes('cultura') || c.includes('safra') || c === 'crop'),
           )
           const cmt = rowStr.findIndex(
-            (c) => c.includes('comentário') || c.includes('comentario') || c.includes('obs'),
+            (c) =>
+              c &&
+              typeof c === 'string' &&
+              (c.includes('comentário') || c.includes('comentario') || c.includes('obs')),
           )
 
           if (d !== -1 && a !== -1) {
@@ -230,7 +280,8 @@ export function FileImportModal({
 
       const existingTxSet = new Set(
         transactions.map(
-          (tx) => `${tx.date}|${Math.abs(tx.amount)}|${tx.type}|${tx.description.toLowerCase()}`,
+          (tx) =>
+            `${tx.date}|${Math.abs(tx.amount)}|${tx.type}|${(tx.description || '').toLowerCase()}`,
         ),
       )
 
@@ -238,7 +289,7 @@ export function FileImportModal({
         if (i === headerRowIdx) continue
 
         const row = data[i]
-        if (!row || !row.some((c) => c && c.trim() !== '')) continue
+        if (!row || !Array.isArray(row) || !row.some((c) => c && String(c).trim() !== '')) continue
 
         const rawDate = dateIdx !== -1 && dateIdx < row.length ? row[dateIdx] : ''
         const rawDesc = descIdx !== -1 && descIdx < row.length ? row[descIdx] : ''
@@ -253,12 +304,16 @@ export function FileImportModal({
         const rawCrop = cropIdx !== -1 && cropIdx < row.length ? row[cropIdx] : ''
         const rawComment = commentIdx !== -1 && commentIdx < row.length ? row[commentIdx] : ''
 
+        const rawDateStr = String(rawDate || '').toLowerCase()
+        const rawDescStr = String(rawDesc || '').toLowerCase()
+        const rawAmtStr = String(rawAmt || '').toLowerCase()
+
         if (
           i === 0 &&
           headerRowIdx === -1 &&
-          (String(rawDate).toLowerCase().includes('data') ||
-            String(rawDesc).toLowerCase().includes('descri') ||
-            String(rawAmt).toLowerCase().includes('valor'))
+          (rawDateStr.includes('data') ||
+            rawDescStr.includes('descri') ||
+            rawAmtStr.includes('valor'))
         ) {
           continue
         }
@@ -266,7 +321,7 @@ export function FileImportModal({
         const dateStr = parseDate(rawDate)
         const isDateValid = /^\d{4}-\d{2}-\d{2}$/.test(dateStr)
         const parsedAmt = parseAmount(rawAmt)
-        const hasNumbers = /\d/.test(String(rawAmt))
+        const hasNumbers = /\d/.test(String(rawAmt || ''))
         const isAmtValid = Boolean(rawAmt) && hasNumbers && !isNaN(parsedAmt)
 
         let isInvalid = false
@@ -298,37 +353,37 @@ export function FileImportModal({
           } else if (parsedAmt > 0) {
             detectedType = 'receita'
           } else {
-            const hasDebitMarker = row.some((c) =>
-              debitMarkers.includes(
-                String(c || '')
-                  .trim()
-                  .toUpperCase(),
-              ),
-            )
-            const hasCreditMarker = row.some((c) =>
-              creditMarkers.includes(
-                String(c || '')
-                  .trim()
-                  .toUpperCase(),
-              ),
-            )
+            const hasDebitMarker = row.some((c) => {
+              const str = String(c || '')
+                .trim()
+                .toUpperCase()
+              return str && typeof str === 'string' && debitMarkers.includes(str)
+            })
+            const hasCreditMarker = row.some((c) => {
+              const str = String(c || '')
+                .trim()
+                .toUpperCase()
+              return str && typeof str === 'string' && creditMarkers.includes(str)
+            })
 
             if (hasDebitMarker) detectedType = 'despesa'
             else if (hasCreditMarker) detectedType = 'receita'
-            else detectedType = 'indefinido' // Default to undefined if we can't classify
+            else detectedType = 'indefinido'
           }
         }
 
-        const desc = String(rawDesc).trim()
+        const desc = String(rawDesc || '').trim()
         const cat = rawCat ? String(rawCat).trim() : categorizeDesc(desc)
 
-        const vCrop = String(rawCrop).toLowerCase()
+        const vCrop = String(rawCrop || '').toLowerCase()
         let crop: 'Soja' | 'Milho' | 'Cana' | 'Geral' = 'Geral'
-        if (vCrop.includes('soja')) crop = 'Soja'
-        else if (vCrop.includes('milho')) crop = 'Milho'
-        else if (vCrop.includes('cana')) crop = 'Cana'
+        if (vCrop && typeof vCrop === 'string') {
+          if (vCrop.includes('soja')) crop = 'Soja'
+          else if (vCrop.includes('milho')) crop = 'Milho'
+          else if (vCrop.includes('cana')) crop = 'Cana'
+        }
 
-        const descLower = desc.toLowerCase()
+        const descLower = typeof desc === 'string' ? desc.toLowerCase() : ''
 
         const isDup =
           !isInvalid &&
@@ -342,7 +397,7 @@ export function FileImportModal({
           amount: parsedAmt,
           cat,
           crop,
-          comments: String(rawComment).trim(),
+          comments: String(rawComment || '').trim(),
           type: detectedType as string,
           isDuplicate: isDup,
           isInvalid,
@@ -371,34 +426,52 @@ export function FileImportModal({
     if (!file) return
     setFileName(file.name)
 
-    const lowerName = file.name.toLowerCase()
+    const lowerName = file.name ? file.name.toLowerCase() : ''
 
     if (lowerName.endsWith('.csv')) {
       const reader = new FileReader()
       reader.onload = (ev) => {
-        const rows = parseCsvFile(ev.target?.result as string)
-        if (rows.length > 0) validateAndPreview(rows)
-        else toast({ variant: 'destructive', title: 'Erro', description: 'CSV vazio ou inválido.' })
+        const content = ev.target?.result
+        if (typeof content === 'string') {
+          const rows = parseCsvFile(content)
+          if (rows && rows.length > 0) validateAndPreview(rows)
+          else
+            toast({ variant: 'destructive', title: 'Erro', description: 'CSV vazio ou inválido.' })
+        } else {
+          toast({
+            variant: 'destructive',
+            title: 'Erro',
+            description: 'Não foi possível ler o CSV.',
+          })
+        }
       }
       reader.readAsText(file)
     } else if (lowerName.endsWith('.ofx')) {
       const reader = new FileReader()
       reader.onload = (ev) => {
-        const content = ev.target?.result as string
-        const ofxData = parseOfxFile(content)
-        if (ofxData.length > 0) validateAndPreviewOfx(ofxData)
-        else
+        const content = ev.target?.result
+        if (typeof content === 'string') {
+          const ofxData = parseOfxFile(content)
+          if (ofxData && ofxData.length > 0) validateAndPreviewOfx(ofxData)
+          else
+            toast({
+              variant: 'destructive',
+              title: 'Erro',
+              description: 'Arquivo OFX vazio ou inválido. Nenhuma transação (STMTTRN) encontrada.',
+            })
+        } else {
           toast({
             variant: 'destructive',
             title: 'Erro',
-            description: 'Arquivo OFX vazio ou inválido. Nenhuma transação (STMTTRN) encontrada.',
+            description: 'Não foi possível ler o OFX.',
           })
+        }
       }
       reader.readAsText(file)
     } else if (lowerName.match(/\.(xlsx|xls)$/i)) {
       try {
         const wb = await readExcelFile(file)
-        if (!wb.SheetNames.length) throw new Error('Empty')
+        if (!wb.SheetNames || !wb.SheetNames.length) throw new Error('Empty')
         setWorkbook(wb)
         if (wb.SheetNames.length > 1) {
           setSelectedSheet(wb.SheetNames[0])
@@ -418,7 +491,7 @@ export function FileImportModal({
 
   const processSheet = (wb: XLSX.WorkBook, sheetName: string) => {
     const rows = getSheetData(wb, sheetName)
-    if (rows.length > 0) {
+    if (rows && rows.length > 0) {
       validateAndPreview(rows)
     } else {
       toast({
@@ -436,7 +509,6 @@ export function FileImportModal({
 
     const validToImport = preview.filter((r) => !r.isDuplicate && !r.isInvalid)
 
-    // Optional: Keep the user from importing totally blank types. If they are 'indefinido', we allow it.
     if (validToImport.some((r) => r.type === '')) {
       toast({
         variant: 'destructive',
@@ -457,7 +529,6 @@ export function FileImportModal({
     }
 
     const txs: Transaction[] = validToImport.map((r, i) => {
-      // If type is despesa or undefined (but negative amount), set it to negative
       let finalAmt = Math.abs(r.amount)
       if (r.type === 'despesa') {
         finalAmt = -finalAmt
@@ -525,7 +596,7 @@ export function FileImportModal({
             (tx.date === r.date &&
               tx.amount === (r.type === 'despesa' ? -Math.abs(r.amount) : Math.abs(r.amount)) &&
               tx.type === r.type &&
-              tx.description.toLowerCase() === r.desc.toLowerCase()),
+              (tx.description || '').toLowerCase() === (r.desc || '').toLowerCase()),
         )
       }
       copy[index] = r
