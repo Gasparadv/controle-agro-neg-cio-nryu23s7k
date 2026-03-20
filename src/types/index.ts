@@ -1,4 +1,4 @@
-export type TransactionType = 'receita' | 'despesa'
+export type TransactionType = 'receita' | 'despesa' | 'indefinido'
 
 export type CropType = 'Soja' | 'Milho' | 'Cana' | 'Geral'
 

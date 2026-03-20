@@ -128,6 +128,28 @@ const initialTransactions: Transaction[] = [
     status: 'approved',
     importBatchId: 'batch-1',
   },
+  {
+    id: '10',
+    date: '2024-04-16',
+    description: 'Lançamento Desconhecido 1',
+    amount: 5400,
+    type: 'indefinido',
+    category: 'Outros',
+    comments: 'Lote de extrato pendente de revisão',
+    crop: 'Geral',
+    status: 'pending',
+  },
+  {
+    id: '11',
+    date: '2024-04-17',
+    description: 'Pix Recebido / Enviado',
+    amount: 1250,
+    type: 'indefinido',
+    category: 'Outros',
+    comments: 'Falta classificar como entrada ou saída',
+    crop: 'Geral',
+    status: 'pending',
+  },
 ]
 
 const AgroStoreContext = createContext<AgroStoreContextType | undefined>(undefined)

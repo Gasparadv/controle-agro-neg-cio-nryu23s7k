@@ -7,16 +7,25 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { formatBRL, formatDate } from '@/lib/format'
 import { Transaction } from '@/types'
-import { Clock, CheckCircle2, XCircle } from 'lucide-react'
+import { Clock, CheckCircle2, XCircle, AlertCircle } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface TransactionTableProps {
   transactions: Transaction[]
   onSelect: (tx: Transaction) => void
+  onUpdateType?: (tx: Transaction, type: 'receita' | 'despesa') => void
+  emptyStateMessage?: string
 }
 
-export function TransactionTable({ transactions, onSelect }: TransactionTableProps) {
+export function TransactionTable({
+  transactions,
+  onSelect,
+  onUpdateType,
+  emptyStateMessage,
+}: TransactionTableProps) {
   const getStatusBadge = (status?: string) => {
     switch (status) {
       case 'pending':
@@ -53,7 +62,7 @@ export function TransactionTable({ transactions, onSelect }: TransactionTablePro
             <TableHead>Descrição</TableHead>
             <TableHead>Categoria / Status</TableHead>
             <TableHead>Cultura</TableHead>
-            <TableHead className="text-right">Valor</TableHead>
+            <TableHead className="text-right">Valor / Tipo</TableHead>
             <TableHead className="hidden md:table-cell">Comentários</TableHead>
           </TableRow>
         </TableHeader>
@@ -62,11 +71,21 @@ export function TransactionTable({ transactions, onSelect }: TransactionTablePro
             <TableRow
               key={tx.id}
               onClick={() => onSelect(tx)}
-              className={`cursor-pointer hover:bg-muted/60 transition-colors ${tx.status === 'rejected' ? 'opacity-60' : ''}`}
+              className={cn(
+                'cursor-pointer hover:bg-muted/60 transition-colors',
+                tx.status === 'rejected' && 'opacity-60',
+                tx.type === 'indefinido' &&
+                  'bg-orange-500/5 hover:bg-orange-500/10 border-l-2 border-l-orange-500',
+              )}
             >
               <TableCell className="font-medium whitespace-nowrap">{formatDate(tx.date)}</TableCell>
               <TableCell>
-                <div className="font-medium">{tx.description}</div>
+                <div className="font-medium flex items-center gap-2">
+                  {tx.type === 'indefinido' && (
+                    <AlertCircle className="h-4 w-4 text-orange-500 shrink-0" />
+                  )}
+                  {tx.description}
+                </div>
                 {tx.status === 'rejected' && tx.rejectionReason && (
                   <div className="text-xs text-destructive mt-1">
                     Motivo recusa: {tx.rejectionReason}
@@ -83,16 +102,48 @@ export function TransactionTable({ transactions, onSelect }: TransactionTablePro
               </TableCell>
               <TableCell>{tx.crop}</TableCell>
               <TableCell className="text-right whitespace-nowrap">
-                <span
-                  className={
-                    tx.type === 'receita'
-                      ? 'text-green-600 dark:text-green-500 font-medium'
-                      : 'text-destructive'
-                  }
-                >
-                  {tx.type === 'despesa' ? '- ' : '+ '}
-                  {formatBRL(Math.abs(tx.amount))}
-                </span>
+                {tx.type === 'indefinido' ? (
+                  <div className="flex flex-col items-end gap-1.5">
+                    <span className="font-medium text-muted-foreground">
+                      {formatBRL(Math.abs(tx.amount))}
+                    </span>
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-6 px-2 text-[10px] bg-green-50 text-green-700 border-green-200 hover:bg-green-100 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onUpdateType?.(tx, 'receita')
+                        }}
+                      >
+                        Receita
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-6 px-2 text-[10px] bg-red-50 text-red-700 border-red-200 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onUpdateType?.(tx, 'despesa')
+                        }}
+                      >
+                        Despesa
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <span
+                    className={
+                      tx.type === 'receita'
+                        ? 'text-green-600 dark:text-green-500 font-medium'
+                        : 'text-destructive'
+                    }
+                  >
+                    {tx.type === 'despesa' ? '- ' : '+ '}
+                    {formatBRL(Math.abs(tx.amount))}
+                  </span>
+                )}
               </TableCell>
               <TableCell className="hidden md:table-cell text-muted-foreground truncate max-w-[200px]">
                 {tx.comments || '-'}
@@ -102,7 +153,7 @@ export function TransactionTable({ transactions, onSelect }: TransactionTablePro
           {transactions.length === 0 && (
             <TableRow>
               <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                Nenhum lançamento encontrado.
+                {emptyStateMessage || 'Nenhum lançamento encontrado.'}
               </TableCell>
             </TableRow>
           )}

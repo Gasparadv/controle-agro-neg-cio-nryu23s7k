@@ -46,7 +46,13 @@ export function TransactionSheet({
   if (!formData) return null
 
   const handleSave = () => {
-    onSave(formData)
+    // Ensure amount sign aligns with the selected type
+    let finalAmt = Math.abs(formData.amount)
+    if (formData.type === 'despesa') {
+      finalAmt = -finalAmt
+    }
+
+    onSave({ ...formData, amount: finalAmt })
     onOpenChange(false)
     toast({
       title: 'Transação Atualizada',
@@ -68,6 +74,24 @@ export function TransactionSheet({
             <Label>Descrição</Label>
             <Input disabled value={formData.description} className="bg-muted" />
           </div>
+
+          <div className="space-y-2">
+            <Label>Tipo de Lançamento</Label>
+            <Select
+              value={formData.type}
+              onValueChange={(val: any) => setFormData({ ...formData, type: val })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o tipo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="receita">Receita (+)</SelectItem>
+                <SelectItem value="despesa">Despesa (-)</SelectItem>
+                <SelectItem value="indefinido">Não Definido</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="space-y-2">
             <Label>Categoria</Label>
             <Select

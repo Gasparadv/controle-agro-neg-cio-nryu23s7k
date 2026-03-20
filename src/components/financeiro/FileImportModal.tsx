@@ -20,7 +20,7 @@ import {
 import { useToast } from '@/hooks/use-toast'
 import useAgroStore from '@/stores/useAgroStore'
 import useAuthStore from '@/stores/useAuthStore'
-import { Transaction } from '@/types'
+import { Transaction, TransactionType } from '@/types'
 import {
   parseAmount,
   parseDate,
@@ -44,9 +44,12 @@ export function FileImportModal({
   const [workbook, setWorkbook] = useState<XLSX.WorkBook | null>(null)
   const [selectedSheet, setSelectedSheet] = useState<string>('')
   const [preview, setPreview] = useState<PreviewRow[]>([])
-  const [summary, setSummary] = useState<{ total: number; debits: number; credits: number } | null>(
-    null,
-  )
+  const [summary, setSummary] = useState<{
+    total: number
+    debits: number
+    credits: number
+    undefined: number
+  } | null>(null)
   const [isPending, startTransition] = useTransition()
 
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -280,7 +283,7 @@ export function FileImportModal({
           errorMsg = 'Valor inválido'
         }
 
-        let detectedType: 'receita' | 'despesa' | '' = ''
+        let detectedType: TransactionType | '' = ''
 
         const debitMarkers = ['D', 'DEBITO', 'DÉBITO', 'DEBIT', 'DESPESA', 'SAÍDA', 'SAIDA', '-']
         const creditMarkers = ['C', 'CREDITO', 'CRÉDITO', 'CREDIT', 'RECEITA', 'ENTRADA', '+']
@@ -312,6 +315,7 @@ export function FileImportModal({
 
             if (hasDebitMarker) detectedType = 'despesa'
             else if (hasCreditMarker) detectedType = 'receita'
+            else detectedType = 'indefinido' // Default to undefined if we can't classify
           }
         }
 
@@ -339,7 +343,7 @@ export function FileImportModal({
           cat,
           crop,
           comments: String(rawComment).trim(),
-          type: detectedType,
+          type: detectedType as string,
           isDuplicate: isDup,
           isInvalid,
           errorMsg,
@@ -432,12 +436,12 @@ export function FileImportModal({
 
     const validToImport = preview.filter((r) => !r.isDuplicate && !r.isInvalid)
 
+    // Optional: Keep the user from importing totally blank types. If they are 'indefinido', we allow it.
     if (validToImport.some((r) => r.type === '')) {
       toast({
         variant: 'destructive',
         title: 'Atenção',
-        description:
-          'Existem lançamentos sem tipo definido (Débito/Crédito). Por favor, classifique-os antes de confirmar.',
+        description: 'Ocorreu um problema ao identificar o tipo de alguns registros.',
       })
       return
     }
@@ -453,13 +457,18 @@ export function FileImportModal({
     }
 
     const txs: Transaction[] = validToImport.map((r, i) => {
-      const finalAmt = r.type === 'despesa' ? -Math.abs(r.amount) : Math.abs(r.amount)
+      // If type is despesa or undefined (but negative amount), set it to negative
+      let finalAmt = Math.abs(r.amount)
+      if (r.type === 'despesa') {
+        finalAmt = -finalAmt
+      }
+
       return {
         id: `imp-${Date.now()}-${i}`,
         date: r.date,
         description: r.desc || 'Importado',
         amount: finalAmt,
-        type: r.type as 'receita' | 'despesa',
+        type: r.type as TransactionType,
         category: r.cat || 'Outros',
         comments: r.comments || `Arquivo: ${fileName}`,
         crop: (r.crop as any) || 'Geral',
@@ -480,7 +489,8 @@ export function FileImportModal({
 
     const debits = txs.filter((t) => t.type === 'despesa').length
     const credits = txs.filter((t) => t.type === 'receita').length
-    setSummary({ total: txs.length, debits, credits })
+    const undef = txs.filter((t) => t.type === 'indefinido').length
+    setSummary({ total: txs.length, debits, credits, undefined: undef })
     setStep(4)
   }
 
@@ -503,7 +513,7 @@ export function FileImportModal({
     })
   }
 
-  const handleTypeChange = (index: number, newType: 'receita' | 'despesa') => {
+  const handleTypeChange = (index: number, newType: 'receita' | 'despesa' | 'indefinido') => {
     setPreview((prev) => {
       const copy = [...prev]
       const r = { ...copy[index], type: newType }
@@ -603,7 +613,7 @@ export function FileImportModal({
             <ImportPreviewTable
               preview={preview}
               onCategoryChange={handleCategoryChange}
-              onTypeChange={handleTypeChange}
+              onTypeChange={handleTypeChange as any}
               onCropChange={handleCropChange}
             />
           </div>
@@ -622,12 +632,18 @@ export function FileImportModal({
                 <span className="text-muted-foreground">Total de Débitos</span>
                 <span className="font-bold text-destructive">{summary.debits}</span>
               </div>
-              <div className="flex justify-between items-center pb-1">
+              <div className="flex justify-between items-center border-b border-border/50 pb-2">
                 <span className="text-muted-foreground">Total de Créditos</span>
                 <span className="font-bold text-green-600 dark:text-green-500">
                   {summary.credits}
                 </span>
               </div>
+              {summary.undefined > 0 && (
+                <div className="flex justify-between items-center pb-1">
+                  <span className="text-muted-foreground">Não Definidos</span>
+                  <span className="font-bold text-orange-500">{summary.undefined}</span>
+                </div>
+              )}
             </div>
           </div>
         )}
