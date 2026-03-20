@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Upload, Filter, History } from 'lucide-react'
+import { Upload, Filter, History, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -16,28 +16,42 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { TransactionTable } from '@/components/financeiro/TransactionTable'
 import { TransactionSheet } from '@/components/financeiro/TransactionSheet'
 import { FileImportModal } from '@/components/financeiro/FileImportModal'
 import { ImportHistoryModal } from '@/components/financeiro/ImportHistoryModal'
+import { QuickAddModal } from '@/components/financeiro/QuickAddModal'
 import useAgroStore from '@/stores/useAgroStore'
+import { useToast } from '@/hooks/use-toast'
 import { Transaction } from '@/types'
 
 const ITEMS_PER_PAGE = 10
 
 export default function Financeiro() {
-  const { transactions, updateTransaction } = useAgroStore()
+  const { transactions, updateTransaction, deleteTransaction } = useAgroStore()
+  const { toast } = useToast()
 
   const [filterCrop, setFilterCrop] = useState<string>('Todos')
   const [filterType, setFilterType] = useState<string>('Todos')
   const [currentPage, setCurrentPage] = useState<number>(1)
 
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null)
+  const [txToDelete, setTxToDelete] = useState<Transaction | null>(null)
   const [isSheetOpen, setIsSheetOpen] = useState(false)
   const [isImportModalOpen, setIsImportModalOpen] = useState(false)
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false)
+  const [isQuickAddOpen, setIsQuickAddOpen] = useState(false)
 
-  // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1)
   }, [filterCrop, filterType])
@@ -53,14 +67,13 @@ export default function Financeiro() {
     return matchCrop && matchType
   })
 
-  // Group undefined first, then sort by date
   filteredTransactions.sort((a, b) => {
     if (a.type === 'indefinido' && b.type !== 'indefinido') return -1
     if (a.type !== 'indefinido' && b.type === 'indefinido') return 1
     return new Date(b.date).getTime() - new Date(a.date).getTime()
   })
 
-  const totalPages = Math.ceil(filteredTransactions.length / ITEMS_PER_PAGE)
+  const totalPages = Math.ceil(filteredTransactions.length / ITEMS_PER_PAGE) || 1
   const paginatedTransactions = filteredTransactions.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE,
@@ -77,6 +90,20 @@ export default function Financeiro() {
       type: newType,
       amount: newType === 'despesa' ? -Math.abs(tx.amount) : Math.abs(tx.amount),
     })
+  }
+
+  const handleDeleteConfirm = () => {
+    if (txToDelete) {
+      deleteTransaction(txToDelete.id)
+      setTxToDelete(null)
+      toast({
+        title: 'Lançamento excluído',
+        description: 'O registro foi removido com sucesso.',
+      })
+      if (paginatedTransactions.length === 1 && currentPage > 1) {
+        setCurrentPage((p) => p - 1)
+      }
+    }
   }
 
   const renderPaginationItems = () => {
@@ -143,23 +170,22 @@ export default function Financeiro() {
           </div>
         </div>
 
-        <div className="flex gap-2 w-full sm:w-auto mt-2 lg:mt-0">
-          <Button
-            onClick={() => setIsHistoryModalOpen(true)}
-            variant="outline"
-            className="gap-2 flex-1 sm:flex-none"
-          >
+        <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2 w-full sm:w-auto mt-2 lg:mt-0">
+          <Button onClick={() => setIsHistoryModalOpen(true)} variant="outline" className="gap-2">
             <History className="h-4 w-4" />
             <span className="hidden sm:inline">Histórico</span>
           </Button>
-          <Button
-            onClick={() => setIsImportModalOpen(true)}
-            variant="secondary"
-            className="gap-2 flex-1 sm:flex-none"
-          >
+          <Button onClick={() => setIsImportModalOpen(true)} variant="secondary" className="gap-2">
             <Upload className="h-4 w-4" />
-            <span className="hidden sm:inline">Importar (CSV/Excel)</span>
-            <span className="sm:hidden">Importar</span>
+            <span className="hidden xl:inline">Importar</span>
+            <span className="xl:hidden sm:inline hidden">Importar</span>
+          </Button>
+          <Button
+            onClick={() => setIsQuickAddOpen(true)}
+            className="gap-2 col-span-2 sm:col-span-1"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Novo Lançamento</span>
           </Button>
         </div>
       </div>
@@ -168,6 +194,7 @@ export default function Financeiro() {
         transactions={paginatedTransactions}
         onSelect={handleRowClick}
         onUpdateType={handleUpdateType}
+        onDelete={(tx) => setTxToDelete(tx)}
         emptyStateMessage={emptyMessage}
       />
 
@@ -208,6 +235,27 @@ export default function Financeiro() {
 
       <FileImportModal open={isImportModalOpen} onOpenChange={setIsImportModalOpen} />
       <ImportHistoryModal open={isHistoryModalOpen} onOpenChange={setIsHistoryModalOpen} />
+      <QuickAddModal open={isQuickAddOpen} onOpenChange={setIsQuickAddOpen} />
+
+      <AlertDialog open={!!txToDelete} onOpenChange={(val) => !val && setTxToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Lançamento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir este lançamento? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

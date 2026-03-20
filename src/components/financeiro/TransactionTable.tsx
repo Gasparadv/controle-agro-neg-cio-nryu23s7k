@@ -10,13 +10,14 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { formatBRL, formatDate } from '@/lib/format'
 import { Transaction } from '@/types'
-import { Clock, CheckCircle2, XCircle, AlertCircle } from 'lucide-react'
+import { Clock, CheckCircle2, XCircle, AlertCircle, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface TransactionTableProps {
   transactions: Transaction[]
   onSelect: (tx: Transaction) => void
   onUpdateType?: (tx: Transaction, type: 'receita' | 'despesa') => void
+  onDelete?: (tx: Transaction) => void
   emptyStateMessage?: string
 }
 
@@ -24,6 +25,7 @@ export function TransactionTable({
   transactions,
   onSelect,
   onUpdateType,
+  onDelete,
   emptyStateMessage,
 }: TransactionTableProps) {
   const getStatusBadge = (status?: string) => {
@@ -64,6 +66,7 @@ export function TransactionTable({
             <TableHead>Cultura</TableHead>
             <TableHead className="text-right">Valor / Tipo</TableHead>
             <TableHead className="hidden md:table-cell">Comentários</TableHead>
+            <TableHead className="w-[50px]"></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -148,11 +151,26 @@ export function TransactionTable({
               <TableCell className="hidden md:table-cell text-muted-foreground truncate max-w-[200px]">
                 {tx.comments || '-'}
               </TableCell>
+              <TableCell className="text-right pr-4">
+                {onDelete && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onDelete(tx)
+                    }}
+                    className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </TableCell>
             </TableRow>
           ))}
           {transactions.length === 0 && (
             <TableRow>
-              <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+              <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                 {emptyStateMessage || 'Nenhum lançamento encontrado.'}
               </TableCell>
             </TableRow>

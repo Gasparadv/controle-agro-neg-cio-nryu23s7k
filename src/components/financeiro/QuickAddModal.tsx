@@ -42,20 +42,42 @@ export function QuickAddModal({ open, onOpenChange }: QuickAddModalProps) {
   const [comments, setComments] = useState('')
 
   const handleSave = () => {
-    if (!description || !amount) {
+    if (!date || !description || !amount) {
       toast({
-        title: 'Erro',
-        description: 'Preencha a descrição e o valor.',
+        title: 'Erro de Validação',
+        description: 'Preencha a data, descrição e o valor.',
         variant: 'destructive',
       })
       return
+    }
+
+    let normalized = amount.replace(/\s/g, '')
+    if (normalized.includes('.') && normalized.includes(',')) {
+      normalized = normalized.replace(/\./g, '').replace(',', '.')
+    } else if (normalized.includes(',')) {
+      normalized = normalized.replace(',', '.')
+    }
+    const numAmount = parseFloat(normalized)
+
+    if (isNaN(numAmount)) {
+      toast({
+        title: 'Valor Inválido',
+        description: 'Por favor, insira um valor numérico válido.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    let finalAmt = Math.abs(numAmount)
+    if (type === 'despesa') {
+      finalAmt = -finalAmt
     }
 
     const newTx: Transaction = {
       id: `manual-${Date.now()}`,
       date,
       description,
-      amount: parseFloat(amount),
+      amount: finalAmt,
       type,
       category,
       crop,
@@ -70,14 +92,14 @@ export function QuickAddModal({ open, onOpenChange }: QuickAddModalProps) {
       title: role === 'collaborator' ? 'Lançamento Pendente' : 'Lançamento Adicionado',
       description:
         role === 'collaborator'
-          ? 'Seu lançamento foi enviado para aprovação do proprietário.'
+          ? 'Seu lançamento foi enviado para aprovação.'
           : 'O registro foi adicionado com sucesso.',
     })
 
-    // Reset and close
     setDescription('')
     setAmount('')
     setComments('')
+    setDate(new Date().toISOString().split('T')[0])
     onOpenChange(false)
   }
 
@@ -124,8 +146,9 @@ export function QuickAddModal({ open, onOpenChange }: QuickAddModalProps) {
             <div className="space-y-2">
               <Label>Valor (R$)</Label>
               <Input
-                type="number"
-                placeholder="0.00"
+                type="text"
+                inputMode="decimal"
+                placeholder="0,00"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
               />

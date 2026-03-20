@@ -7,6 +7,7 @@ interface AgroStoreContextType {
   addTransaction: (tx: Transaction) => void
   addTransactions: (txs: Transaction[]) => void
   updateTransaction: (tx: Transaction) => void
+  deleteTransaction: (id: string) => void
   approveTransaction: (id: string) => void
   rejectTransaction: (id: string, reason: string) => void
   addImportBatch: (batch: ImportBatch) => void
@@ -170,6 +171,10 @@ export function AgroProvider({ children }: { children: React.ReactNode }) {
     setTransactions((prev) => prev.map((item) => (item.id === tx.id ? tx : item)))
   }
 
+  const deleteTransaction = (id: string) => {
+    setTransactions((prev) => prev.filter((item) => item.id !== id))
+  }
+
   const approveTransaction = (id: string) => {
     setTransactions((prev) =>
       prev.map((item) =>
@@ -203,6 +208,7 @@ export function AgroProvider({ children }: { children: React.ReactNode }) {
         addTransaction,
         addTransactions,
         updateTransaction,
+        deleteTransaction,
         approveTransaction,
         rejectTransaction,
         addImportBatch,
