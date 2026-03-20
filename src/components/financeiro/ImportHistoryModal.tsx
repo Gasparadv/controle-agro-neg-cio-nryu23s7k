@@ -27,7 +27,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import useAgroStore from '@/stores/useAgroStore'
-import { Trash2, RefreshCw, Loader2 } from 'lucide-react'
+import { Trash2, RefreshCw, Loader2, CheckCircle2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { formatDate } from '@/lib/format'
 import { ImportBatch } from '@/types'
@@ -102,7 +102,6 @@ export function ImportHistoryModal({ open, onOpenChange }: ImportHistoryModalPro
         )
       }
 
-      // Build map of existing transactions to check for duplicates
       const existingMap = new Set(
         transactions.map(
           (t) => `${t.date}|${Math.abs(t.amount)}|${t.type}|${(t.description || '').toLowerCase()}`,
@@ -115,7 +114,6 @@ export function ImportHistoryModal({ open, onOpenChange }: ImportHistoryModalPro
         return !existingIds.has(t.id) && !existingMap.has(key)
       })
 
-      // Simulate network delay for UI feedback
       await new Promise((resolve) => setTimeout(resolve, 800))
 
       if (missingTxs.length > 0) {
@@ -143,11 +141,11 @@ export function ImportHistoryModal({ open, onOpenChange }: ImportHistoryModalPro
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px]">
+      <DialogContent className="sm:max-w-[750px]">
         <DialogHeader>
           <DialogTitle>Histórico de Importações</DialogTitle>
           <DialogDescription>
-            Visualize e desfaça importações recentes de extratos bancários e planilhas.
+            Visualize, sincronize e desfaça importações recentes de extratos bancários e planilhas.
           </DialogDescription>
         </DialogHeader>
 
@@ -159,7 +157,7 @@ export function ImportHistoryModal({ open, onOpenChange }: ImportHistoryModalPro
                 <TableHead className="min-w-[150px]">Arquivo</TableHead>
                 <TableHead className="w-[80px] text-center">Registros</TableHead>
                 <TableHead className="w-[140px]">Status</TableHead>
-                <TableHead className="text-right w-[120px]">Ações</TableHead>
+                <TableHead className="text-right w-[150px]">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -200,14 +198,15 @@ export function ImportHistoryModal({ open, onOpenChange }: ImportHistoryModalPro
                       {status === 'completed' && (
                         <Badge
                           variant="outline"
-                          className="bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-400 font-medium text-[10px] whitespace-nowrap"
+                          className="bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-400 font-medium text-[10px] whitespace-nowrap gap-1"
                         >
+                          <CheckCircle2 className="w-3 h-3" />
                           Totalmente Integrado
                         </Badge>
                       )}
                     </TableCell>
                     <TableCell className="text-right flex items-center justify-end gap-1">
-                      {canSync && (
+                      {canSync ? (
                         <Button
                           variant="outline"
                           size="sm"
@@ -220,8 +219,12 @@ export function ImportHistoryModal({ open, onOpenChange }: ImportHistoryModalPro
                           ) : (
                             <RefreshCw className="h-3 w-3" />
                           )}
-                          <span className="hidden sm:inline">Sincronizar</span>
+                          <span className="hidden sm:inline">
+                            {syncingId === batch.id ? 'Sincronizando...' : 'Sincronizar'}
+                          </span>
                         </Button>
+                      ) : (
+                        <div className="h-7 px-2"></div>
                       )}
                       <Button
                         variant="ghost"
