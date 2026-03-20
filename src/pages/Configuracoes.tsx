@@ -65,7 +65,7 @@ export default function Configuracoes() {
       equipments,
       exportedAt: new Date().toISOString(),
     }
-    exportAllToJSON(data, 'agroflow_backup')
+    exportAllToJSON(data, 'controle_agro_negocio_backup')
     toast({
       title: 'Backup concluído',
       description: 'Arquivo JSON consolidado gerado com sucesso.',

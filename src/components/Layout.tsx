@@ -61,7 +61,7 @@ export function Layout() {
   const { transactions } = useAgroStore()
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false)
 
-  const pageTitle = titleMap[location.pathname] || 'AgroFlow'
+  const pageTitle = titleMap[location.pathname] || 'Controle Agro Negocio'
 
   const pendingCount = transactions.filter((t) => t.status === 'pending').length
 
@@ -106,8 +106,10 @@ export function Layout() {
         <Sidebar>
           <SidebarHeader className="border-b px-4 py-6">
             <div className="flex items-center gap-2 text-primary">
-              <Sprout className="h-8 w-8" />
-              <span className="text-xl font-bold tracking-tight">AgroFlow</span>
+              <Sprout className="h-8 w-8 shrink-0" />
+              <span className="text-lg font-bold tracking-tight leading-tight">
+                Controle Agro Negocio
+              </span>
             </div>
           </SidebarHeader>
           <SidebarContent className="py-4">
