@@ -4,23 +4,41 @@ export const parseAmount = (val: string | number | undefined | null): number => 
   if (val === undefined || val === null || val === '') return 0
   if (typeof val === 'number') return val
 
-  let strVal = String(val).trim()
+  const strVal = String(val).trim()
+  const isNegative = strVal.includes('-') || /^\(.*\)$/.test(strVal)
 
-  // Check for parenthesis representing negative values e.g. (50.00) -> -50.00
-  const isNegativeParenthesis = /^\(.*\)$/.test(strVal)
+  let clean = strVal.replace(/[^0-9.,]/g, '')
+  if (!clean) return 0
 
-  let clean = strVal.replace(/[^0-9.,-]/g, '')
-  if (clean.includes(',') && clean.includes('.')) {
+  const hasComma = clean.includes(',')
+  const hasDot = clean.includes('.')
+
+  if (hasComma && hasDot) {
     const lastComma = clean.lastIndexOf(',')
     const lastDot = clean.lastIndexOf('.')
-    if (lastComma > lastDot) clean = clean.replace(/\./g, '').replace(',', '.')
-    else clean = clean.replace(/,/g, '')
-  } else if (clean.includes(',')) {
-    clean = clean.replace(',', '.')
+    if (lastComma > lastDot) {
+      clean = clean.replace(/\./g, '').replace(',', '.')
+    } else {
+      clean = clean.replace(/,/g, '')
+    }
+  } else if (hasComma) {
+    const parts = clean.split(',')
+    if (parts.length > 2) {
+      clean = clean.replace(/,/g, '')
+    } else {
+      clean = clean.replace(',', '.')
+    }
+  } else if (hasDot) {
+    const parts = clean.split('.')
+    if (parts.length > 2) {
+      clean = clean.replace(/\./g, '')
+    } else if (parts.length === 2 && parts[1].length === 3) {
+      clean = clean.replace(/\./g, '')
+    }
   }
 
   let num = parseFloat(clean) || 0
-  if (isNegativeParenthesis) {
+  if (isNegative && num !== 0) {
     num = -Math.abs(num)
   }
   return num

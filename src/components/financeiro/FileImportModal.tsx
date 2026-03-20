@@ -102,8 +102,8 @@ export function FileImportModal({
         isDateValid = true
       }
 
-      const parsedAmt = parseFloat(item.rawAmt)
-      const isAmtValid = !isNaN(parsedAmt)
+      const parsedAmt = parseAmount(item.rawAmt)
+      const isAmtValid = !isNaN(parsedAmt) && item.rawAmt !== ''
 
       let isInvalid = false
       let errorMsg = ''
@@ -140,6 +140,8 @@ export function FileImportModal({
         desc,
         amount: parsedAmt,
         cat,
+        crop: 'Geral',
+        comments: '',
         type: detectedType,
         isDuplicate: isDup,
         isInvalid,
@@ -156,17 +158,22 @@ export function FileImportModal({
   const validateAndPreview = (data: string[][]) => {
     const p: PreviewRow[] = []
 
-    let dateIdx = 0
-    let descIdx = 2
-    let amtIdx = 4
-    let typeIdx = 5
+    let dateIdx = -1
+    let descIdx = -1
+    let amtIdx = -1
+    let typeIdx = -1
+    let catIdx = -1
+    let cropIdx = -1
+    let commentIdx = -1
     let headerRowIdx = -1
 
-    // Scan for columns dynamically based on headers
-    for (let i = 0; i < Math.min(5, data.length); i++) {
+    for (let i = 0; i < Math.min(20, data.length); i++) {
       const rowStr = data[i].map((c) => String(c).toLowerCase().trim())
       if (rowStr.some((c) => c.includes('data') || c.includes('vencimento'))) {
-        const d = rowStr.findIndex((c) => c.includes('data') || c.includes('vencimento'))
+        const d = rowStr.findIndex(
+          (c) =>
+            c === 'data' || c === 'vencimento' || c.includes('data') || c.includes('vencimento'),
+        )
         const de = rowStr.findIndex(
           (c) => c.includes('descri') || c.includes('histórico') || c.includes('historico'),
         )
@@ -177,15 +184,32 @@ export function FileImportModal({
           (c) =>
             c === 'tipo' || c === 'natureza' || c === 'd/c' || c === 'situação' || c === 'situacao',
         )
+        const cat = rowStr.findIndex((c) => c.includes('categoria') || c.includes('classifica'))
+        const crop = rowStr.findIndex(
+          (c) => c.includes('cultura') || c.includes('safra') || c === 'crop',
+        )
+        const cmt = rowStr.findIndex(
+          (c) => c.includes('comentário') || c.includes('comentario') || c.includes('obs'),
+        )
 
-        if (d !== -1) dateIdx = d
-        if (de !== -1) descIdx = de
-        if (a !== -1) amtIdx = a
-        if (t !== -1) typeIdx = t
-
-        headerRowIdx = i
-        break
+        if (d !== -1 && a !== -1) {
+          dateIdx = d
+          descIdx = de
+          amtIdx = a
+          typeIdx = t
+          catIdx = cat
+          cropIdx = crop
+          commentIdx = cmt
+          headerRowIdx = i
+          break
+        }
       }
+    }
+
+    if (headerRowIdx === -1) {
+      dateIdx = 0
+      descIdx = 1
+      amtIdx = 2
     }
 
     for (let i = 0; i < data.length; i++) {
@@ -194,7 +218,7 @@ export function FileImportModal({
       const row = data[i]
       if (!row || !row.some((c) => c && c.trim() !== '')) continue
 
-      const rawDate = row[dateIdx]
+      const rawDate = dateIdx !== -1 && dateIdx < row.length ? row[dateIdx] : ''
       const rawDesc = descIdx !== -1 && descIdx < row.length ? row[descIdx] : ''
       const rawAmt = amtIdx !== -1 && amtIdx < row.length ? row[amtIdx] : ''
       const rawTypeMarkerF =
@@ -203,6 +227,9 @@ export function FileImportModal({
               .trim()
               .toUpperCase()
           : ''
+      const rawCat = catIdx !== -1 && catIdx < row.length ? row[catIdx] : ''
+      const rawCrop = cropIdx !== -1 && cropIdx < row.length ? row[cropIdx] : ''
+      const rawComment = commentIdx !== -1 && commentIdx < row.length ? row[commentIdx] : ''
 
       if (
         i === 0 &&
@@ -236,43 +263,50 @@ export function FileImportModal({
 
       let detectedType: 'receita' | 'despesa' | '' = ''
 
-      const debitMarkers = ['D', 'DEBITO', 'DÉBITO', 'DEBIT']
-      const creditMarkers = ['C', 'CREDITO', 'CRÉDITO', 'CREDIT']
+      const debitMarkers = ['D', 'DEBITO', 'DÉBITO', 'DEBIT', 'DESPESA', 'SAÍDA', 'SAIDA']
+      const creditMarkers = ['C', 'CREDITO', 'CRÉDITO', 'CREDIT', 'RECEITA', 'ENTRADA']
 
-      if (debitMarkers.includes(rawTypeMarkerF)) {
+      if (rawTypeMarkerF && debitMarkers.includes(rawTypeMarkerF)) {
         detectedType = 'despesa'
-      } else if (creditMarkers.includes(rawTypeMarkerF)) {
+      } else if (rawTypeMarkerF && creditMarkers.includes(rawTypeMarkerF)) {
         detectedType = 'receita'
       } else {
-        // Fallback: search across all columns for unambiguous D/C markers
-        const hasDebitMarker = row.some((c) =>
-          debitMarkers.includes(
-            String(c || '')
-              .trim()
-              .toUpperCase(),
-          ),
-        )
-        const hasCreditMarker = row.some((c) =>
-          creditMarkers.includes(
-            String(c || '')
-              .trim()
-              .toUpperCase(),
-          ),
-        )
-
-        if (hasDebitMarker) {
-          detectedType = 'despesa'
-        } else if (hasCreditMarker) {
-          detectedType = 'receita'
-        } else if (parsedAmt < 0) {
+        if (parsedAmt < 0) {
           detectedType = 'despesa'
         } else if (parsedAmt > 0) {
           detectedType = 'receita'
+        } else {
+          const hasDebitMarker = row.some((c) =>
+            debitMarkers.includes(
+              String(c || '')
+                .trim()
+                .toUpperCase(),
+            ),
+          )
+          const hasCreditMarker = row.some((c) =>
+            creditMarkers.includes(
+              String(c || '')
+                .trim()
+                .toUpperCase(),
+            ),
+          )
+
+          if (hasDebitMarker) {
+            detectedType = 'despesa'
+          } else if (hasCreditMarker) {
+            detectedType = 'receita'
+          }
         }
       }
 
       const desc = String(rawDesc).trim()
-      const cat = categorizeDesc(desc)
+      const cat = rawCat ? String(rawCat).trim() : categorizeDesc(desc)
+
+      const vCrop = String(rawCrop).toLowerCase()
+      let crop: 'Soja' | 'Milho' | 'Cana' | 'Geral' = 'Geral'
+      if (vCrop.includes('soja')) crop = 'Soja'
+      else if (vCrop.includes('milho')) crop = 'Milho'
+      else if (vCrop.includes('cana')) crop = 'Cana'
 
       const isDup =
         !isInvalid &&
@@ -291,6 +325,8 @@ export function FileImportModal({
         desc,
         amount: parsedAmt,
         cat,
+        crop,
+        comments: String(rawComment).trim(),
         type: detectedType,
         isDuplicate: isDup,
         isInvalid,
@@ -411,8 +447,8 @@ export function FileImportModal({
         amount: Math.abs(r.amount),
         type: r.type as 'receita' | 'despesa',
         category: r.cat || 'Outros',
-        comments: `Arquivo: ${fileName}`,
-        crop: 'Geral',
+        comments: r.comments || `Arquivo: ${fileName}`,
+        crop: (r.crop as any) || 'Geral',
         status: isCollab ? 'pending' : 'approved',
         collaboratorName: isCollab ? userName : undefined,
         importBatchId: batchId,
@@ -444,7 +480,7 @@ export function FileImportModal({
   const handleCategoryChange = (index: number, newCat: string) => {
     setPreview((prev) => {
       const copy = [...prev]
-      copy[index].cat = newCat
+      copy[index] = { ...copy[index], cat: newCat }
       return copy
     })
   }
@@ -452,9 +488,8 @@ export function FileImportModal({
   const handleTypeChange = (index: number, newType: 'receita' | 'despesa') => {
     setPreview((prev) => {
       const copy = [...prev]
-      copy[index].type = newType
+      const r = { ...copy[index], type: newType }
 
-      const r = copy[index]
       if (!r.isInvalid) {
         r.isDuplicate = transactions.some(
           (tx) =>
@@ -465,6 +500,15 @@ export function FileImportModal({
               tx.description === r.desc),
         )
       }
+      copy[index] = r
+      return copy
+    })
+  }
+
+  const handleCropChange = (index: number, newCrop: string) => {
+    setPreview((prev) => {
+      const copy = [...prev]
+      copy[index] = { ...copy[index], crop: newCrop }
       return copy
     })
   }
@@ -530,6 +574,7 @@ export function FileImportModal({
               preview={preview}
               onCategoryChange={handleCategoryChange}
               onTypeChange={handleTypeChange}
+              onCropChange={handleCropChange}
             />
           </div>
         )}
