@@ -43,29 +43,35 @@ export function ImportHistoryModal({ open, onOpenChange }: ImportHistoryModalPro
   const [batchToUndo, setBatchToUndo] = useState<string | null>(null)
   const [syncingId, setSyncingId] = useState<string | null>(null)
 
-  const handleUndo = () => {
+  const handleUndo = async () => {
     if (batchToUndo) {
       const batch = importBatches.find((b) => b.id === batchToUndo)
-      undoImportBatch(batchToUndo)
-      toast({
-        title: 'Importação desfeita',
-        description: `${batch?.recordCount || 0} lançamentos removidos com sucesso.`,
-      })
-      setBatchToUndo(null)
+      try {
+        await undoImportBatch(batchToUndo)
+        toast({
+          title: 'Importação desfeita',
+          description: `${batch?.recordCount || 0} lançamentos removidos com sucesso.`,
+        })
+      } catch (error) {
+        toast({
+          variant: 'destructive',
+          title: 'Erro',
+          description: 'Ocorreu um erro ao desfazer a importação.',
+        })
+      } finally {
+        setBatchToUndo(null)
+      }
     }
   }
 
   const getStatus = (batch: ImportBatch) => {
-    const batchTxs = transactions.filter((t) => t.importBatchId === batch.id)
-    if (batchTxs.length === 0) return 'pending'
-    if (batchTxs.length < batch.recordCount) return 'partial'
-    return 'completed'
-  }
+    if (!batch.transactions || batch.transactions.length === 0) {
+      const batchTxs = transactions.filter((t) => t.importBatchId === batch.id)
+      if (batchTxs.length === 0) return 'pending'
+      if (batchTxs.length < batch.recordCount) return 'partial'
+      return 'completed'
+    }
 
-  const handleSync = async (batch: ImportBatch) => {
-    setSyncingId(batch.id)
-
-    // Build map of existing transactions to check for duplicates
     const existingMap = new Set(
       transactions.map(
         (t) => `${t.date}|${Math.abs(t.amount)}|${t.type}|${(t.description || '').toLowerCase()}`,
@@ -73,28 +79,66 @@ export function ImportHistoryModal({ open, onOpenChange }: ImportHistoryModalPro
     )
     const existingIds = new Set(transactions.map((t) => t.id))
 
-    const missingTxs = (batch.transactions || []).filter((t) => {
+    let missingCount = 0
+    for (const t of batch.transactions) {
       const key = `${t.date}|${Math.abs(t.amount)}|${t.type}|${(t.description || '').toLowerCase()}`
-      return !existingIds.has(t.id) && !existingMap.has(key)
-    })
-
-    // Simulate batch processing for UI feedback
-    await new Promise((resolve) => setTimeout(resolve, 1200))
-
-    if (missingTxs.length > 0) {
-      addTransactions(missingTxs)
-      toast({
-        title: 'Sincronização Concluída',
-        description: `${missingTxs.length} registros foram integrados com sucesso.`,
-      })
-    } else {
-      toast({
-        title: 'Nenhum registro pendente',
-        description: 'Todos os registros válidos deste lote já estão integrados.',
-      })
+      if (!existingIds.has(t.id) && !existingMap.has(key)) {
+        missingCount++
+      }
     }
 
-    setSyncingId(null)
+    if (missingCount === batch.transactions.length) return 'pending'
+    if (missingCount > 0) return 'partial'
+    return 'completed'
+  }
+
+  const handleSync = async (batch: ImportBatch) => {
+    setSyncingId(batch.id)
+
+    try {
+      if (!batch.transactions || batch.transactions.length === 0) {
+        throw new Error(
+          'Não há dados salvos neste lote para sincronizar. Formato de dados inválido.',
+        )
+      }
+
+      // Build map of existing transactions to check for duplicates
+      const existingMap = new Set(
+        transactions.map(
+          (t) => `${t.date}|${Math.abs(t.amount)}|${t.type}|${(t.description || '').toLowerCase()}`,
+        ),
+      )
+      const existingIds = new Set(transactions.map((t) => t.id))
+
+      const missingTxs = batch.transactions.filter((t) => {
+        const key = `${t.date}|${Math.abs(t.amount)}|${t.type}|${(t.description || '').toLowerCase()}`
+        return !existingIds.has(t.id) && !existingMap.has(key)
+      })
+
+      // Simulate network delay for UI feedback
+      await new Promise((resolve) => setTimeout(resolve, 800))
+
+      if (missingTxs.length > 0) {
+        await addTransactions(missingTxs)
+        toast({
+          title: 'Sincronização Concluída',
+          description: `${missingTxs.length} registros foram integrados com sucesso.`,
+        })
+      } else {
+        toast({
+          title: 'Nenhum registro pendente',
+          description: 'Todos os registros válidos deste lote já estão integrados.',
+        })
+      }
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Falha na Sincronização',
+        description: err.message || 'Erro de rede ao tentar sincronizar os dados.',
+      })
+    } finally {
+      setSyncingId(null)
+    }
   }
 
   return (
