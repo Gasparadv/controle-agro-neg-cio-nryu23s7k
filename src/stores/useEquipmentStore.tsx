@@ -1,72 +1,50 @@
-import React, { createContext, useContext, useState } from 'react'
+import React, { createContext, useContext, useState, useEffect } from 'react'
 import { Equipment } from '@/types'
+import { fetchFromPB, saveToPB, deleteFromPB } from '@/lib/api'
 
 interface EquipmentStoreContextType {
   equipments: Equipment[]
+  isLoading: boolean
   addEquipment: (eq: Equipment) => void
   updateEquipment: (eq: Equipment) => void
   deleteEquipment: (id: string) => void
 }
 
-const initialEquipments: Equipment[] = [
-  {
-    id: 'eq1',
-    name: 'Trator John Deere 8R',
-    type: 'Máquina',
-    identifier: 'JD-2023-A1',
-    brand: 'John Deere',
-    model: '8R 230',
-    year: 2023,
-    status: 'ativo',
-    acquisitionDate: '2023-01-15',
-    acquisitionValue: 850000,
-  },
-  {
-    id: 'eq2',
-    name: 'Caminhonete Hilux',
-    type: 'Veículo',
-    identifier: 'ABC-1234',
-    brand: 'Toyota',
-    model: 'SRV 4x4',
-    year: 2022,
-    status: 'ativo',
-    acquisitionDate: '2022-05-10',
-    acquisitionValue: 250000,
-  },
-  {
-    id: 'eq3',
-    name: 'Plantadeira 15 Linhas',
-    type: 'Implemento',
-    identifier: 'PL-5590',
-    brand: 'Stara',
-    model: 'Princesa',
-    year: 2021,
-    status: 'ativo',
-    acquisitionDate: '2021-08-20',
-    acquisitionValue: 120000,
-  },
-]
-
 const EquipmentStoreContext = createContext<EquipmentStoreContextType | undefined>(undefined)
 
 export function EquipmentProvider({ children }: { children: React.ReactNode }) {
-  const [equipments, setEquipments] = useState<Equipment[]>(initialEquipments)
+  const [equipments, setEquipments] = useState<Equipment[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
-  const addEquipment = (eq: Equipment) => {
+  useEffect(() => {
+    async function loadData() {
+      const eq = await fetchFromPB('equipments')
+      setEquipments(eq || [])
+      setIsLoading(false)
+    }
+    loadData()
+  }, [])
+
+  const addEquipment = async (eq: Equipment) => {
     setEquipments((prev) => [...prev, eq])
+    const saved = await saveToPB('equipments', eq)
+    setEquipments((prev) => prev.map((e) => (e.id === eq.id ? saved : e)))
   }
 
-  const updateEquipment = (updatedEq: Equipment) => {
+  const updateEquipment = async (updatedEq: Equipment) => {
     setEquipments((prev) => prev.map((eq) => (eq.id === updatedEq.id ? updatedEq : eq)))
+    const saved = await saveToPB('equipments', updatedEq)
+    setEquipments((prev) => prev.map((eq) => (eq.id === updatedEq.id ? saved : eq)))
   }
 
-  const deleteEquipment = (id: string) => {
+  const deleteEquipment = async (id: string) => {
     setEquipments((prev) => prev.filter((eq) => eq.id !== id))
+    await deleteFromPB('equipments', id)
   }
 
   return (
     <EquipmentStoreContext.Provider
-      value={{ equipments, addEquipment, updateEquipment, deleteEquipment }}
+      value={{ equipments, isLoading, addEquipment, updateEquipment, deleteEquipment }}
     >
       {children}
     </EquipmentStoreContext.Provider>
