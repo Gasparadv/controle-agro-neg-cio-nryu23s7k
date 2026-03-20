@@ -1,4 +1,5 @@
 import { Transaction, Equipment } from '@/types'
+import { formatDate } from '@/lib/format'
 
 export const exportToCSV = (transactions: Transaction[], equipments: Equipment[] = []) => {
   const headers = [
@@ -9,6 +10,7 @@ export const exportToCSV = (transactions: Transaction[], equipments: Equipment[]
     'Equipamento',
     'Tipo',
     'Valor',
+    'Conciliação',
     'Status',
     'Comentários',
   ]
@@ -16,15 +18,17 @@ export const exportToCSV = (transactions: Transaction[], equipments: Equipment[]
     const eq = t.equipmentId
       ? equipments.find((e) => e.id === t.equipmentId)?.name || 'Equipamento Removido'
       : ''
+    const conciliacao = t.status === 'approved' ? 'Conciliado com previsão' : 'Sem correspondência'
 
     return [
-      t.date,
+      formatDate(t.date),
       `"${(t.description || '').replace(/"/g, '""')}"`,
       t.category,
       t.crop,
       `"${eq.replace(/"/g, '""')}"`,
       t.type,
       t.amount.toString(),
+      `"${conciliacao}"`,
       t.status || '',
       `"${(t.comments || '').replace(/"/g, '""')}"`,
     ]

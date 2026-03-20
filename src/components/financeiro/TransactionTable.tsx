@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { formatBRL, formatDate } from '@/lib/format'
 import { Transaction } from '@/types'
 import {
@@ -25,6 +26,7 @@ import {
   CheckCircle2,
   XCircle,
   AlertCircle,
+  AlertTriangle,
   Trash2,
   Edit2,
   Tractor,
@@ -76,21 +78,27 @@ export function TransactionTable({
         return (
           <Badge
             variant="outline"
-            className="bg-yellow-100 text-yellow-800 border-yellow-300 gap-1"
+            className="bg-yellow-100 text-yellow-800 border-yellow-300 gap-1 whitespace-nowrap"
           >
             <Clock className="h-3 w-3" /> Pendente
           </Badge>
         )
       case 'rejected':
         return (
-          <Badge variant="outline" className="bg-red-100 text-red-800 border-red-300 gap-1">
+          <Badge
+            variant="outline"
+            className="bg-red-100 text-red-800 border-red-300 gap-1 whitespace-nowrap"
+          >
             <XCircle className="h-3 w-3" /> Rejeitado
           </Badge>
         )
       case 'approved':
       default:
         return (
-          <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300 gap-1">
+          <Badge
+            variant="outline"
+            className="bg-green-100 text-green-800 border-green-300 gap-1 whitespace-nowrap"
+          >
             <CheckCircle2 className="h-3 w-3" /> Aprovado
           </Badge>
         )
@@ -143,7 +151,7 @@ export function TransactionTable({
               onClick={onSortDate}
               title="Ordenar por Data"
             >
-              <div className="flex items-center gap-1.5 select-none">
+              <div className="flex items-center gap-1.5 select-none whitespace-nowrap">
                 Data
                 {onSortDate &&
                   (sortOrder === 'desc' ? (
@@ -155,18 +163,21 @@ export function TransactionTable({
                   ))}
               </div>
             </TableHead>
-            <TableHead>Descrição</TableHead>
+            <TableHead className="min-w-[150px]">Descrição</TableHead>
             <TableHead>Categoria / Status</TableHead>
             <TableHead className="hidden lg:table-cell">Equipamento</TableHead>
             <TableHead>Cultura</TableHead>
             <TableHead className="text-right">Valor / Tipo</TableHead>
-            <TableHead className="hidden md:table-cell">Comentários</TableHead>
+            <TableHead className="text-center w-[100px]">Conciliação</TableHead>
+            <TableHead className="hidden md:table-cell max-w-[200px]">Comentários</TableHead>
             <TableHead className={cn('w-[50px] print:hidden', readOnly && 'hidden')}></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {transactions.map((tx) => {
             const eqName = getEquipmentName(tx.equipmentId)
+            const isReconciled = tx.status === 'approved'
+
             return (
               <TableRow
                 key={tx.id}
@@ -208,7 +219,8 @@ export function TransactionTable({
                   )}
                   {eqName && (
                     <div className="lg:hidden text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                      <Tractor className="h-3 w-3" /> {eqName}
+                      <Tractor className="h-3 w-3 shrink-0" />{' '}
+                      <span className="truncate max-w-[150px]">{eqName}</span>
                     </div>
                   )}
                 </TableCell>
@@ -257,7 +269,7 @@ export function TransactionTable({
                           {tx.category}
                         </Badge>
                         {!readOnly && (
-                          <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-100 text-muted-foreground print:hidden" />
+                          <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-100 text-muted-foreground print:hidden shrink-0" />
                         )}
                       </div>
                     )}
@@ -298,7 +310,7 @@ export function TransactionTable({
                     >
                       {eqName ? (
                         <div className="flex items-center gap-1.5 bg-muted/50 px-2 py-1 rounded w-fit">
-                          <Tractor className="h-3 w-3" />{' '}
+                          <Tractor className="h-3 w-3 shrink-0" />{' '}
                           <span className="truncate max-w-[120px]" title={eqName}>
                             {eqName}
                           </span>
@@ -307,7 +319,7 @@ export function TransactionTable({
                         <span>-</span>
                       )}
                       {!readOnly && (
-                        <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-100 text-muted-foreground print:hidden" />
+                        <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-100 text-muted-foreground print:hidden shrink-0" />
                       )}
                     </div>
                   )}
@@ -344,7 +356,7 @@ export function TransactionTable({
                     >
                       <span>{tx.crop}</span>
                       {!readOnly && (
-                        <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-100 text-muted-foreground print:hidden" />
+                        <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-100 text-muted-foreground print:hidden shrink-0" />
                       )}
                     </div>
                   )}
@@ -394,6 +406,27 @@ export function TransactionTable({
                       {formatBRL(Math.abs(tx.amount))}
                     </span>
                   )}
+                </TableCell>
+                <TableCell className="text-center">
+                  <TooltipProvider>
+                    <Tooltip delayDuration={300}>
+                      <TooltipTrigger asChild>
+                        <div className="flex justify-center cursor-help py-1 print:hidden">
+                          {isReconciled ? (
+                            <CheckCircle2 className="h-5 w-5 text-green-500" />
+                          ) : (
+                            <AlertTriangle className="h-5 w-5 text-amber-500" />
+                          )}
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{isReconciled ? 'Conciliado com previsão' : 'Sem correspondência'}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <span className="hidden print:inline text-xs">
+                    {isReconciled ? 'Conciliado' : 'Pendente'}
+                  </span>
                 </TableCell>
                 <TableCell className="hidden md:table-cell text-muted-foreground max-w-[200px]">
                   {editId === tx.id && editField === 'comments' && !readOnly ? (
@@ -447,7 +480,7 @@ export function TransactionTable({
           })}
           {transactions.length === 0 && (
             <TableRow>
-              <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
+              <TableCell colSpan={10} className="h-24 text-center text-muted-foreground">
                 {emptyStateMessage || 'Nenhum lançamento encontrado.'}
               </TableCell>
             </TableRow>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Upload, Filter, History, Plus, Wand2, Download, Printer } from 'lucide-react'
+import { DateRange } from 'react-day-picker'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -26,12 +27,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { Progress } from '@/components/ui/progress'
 import { TransactionTable } from '@/components/financeiro/TransactionTable'
 import { TransactionSheet } from '@/components/financeiro/TransactionSheet'
@@ -40,6 +35,7 @@ import { ImportHistoryModal } from '@/components/financeiro/ImportHistoryModal'
 import { QuickAddModal } from '@/components/financeiro/QuickAddModal'
 import { BulkActionsBar } from '@/components/financeiro/BulkActionsBar'
 import { MappingRulesModal } from '@/components/financeiro/MappingRulesModal'
+import { DatePickerWithRange } from '@/components/ui/date-range-picker'
 import useAgroStore from '@/stores/useAgroStore'
 import useAuthStore from '@/stores/useAuthStore'
 import useEquipmentStore from '@/stores/useEquipmentStore'
@@ -65,6 +61,7 @@ export default function Financeiro() {
 
   const [filterCrop, setFilterCrop] = useState<string>('Todos')
   const [filterType, setFilterType] = useState<string>('Todos')
+  const [dateRange, setDateRange] = useState<DateRange | undefined>()
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc')
   const [currentPage, setCurrentPage] = useState<number>(1)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
@@ -80,7 +77,7 @@ export default function Financeiro() {
   useEffect(() => {
     setCurrentPage(1)
     setSelectedIds([])
-  }, [filterCrop, filterType, sortOrder])
+  }, [filterCrop, filterType, sortOrder, dateRange])
 
   const filteredTransactions = transactions.filter((t) => {
     const matchCrop = filterCrop === 'Todos' || t.crop === filterCrop
@@ -90,7 +87,25 @@ export default function Financeiro() {
       (filterType === 'Despesas' && t.type === 'despesa') ||
       (filterType === 'Indefinidos' && t.type === 'indefinido')
 
-    return matchCrop && matchType
+    let matchDate = true
+    if (dateRange?.from) {
+      const [year, month, day] = t.date.split('T')[0].split('-').map(Number)
+      const txDate = new Date(year, month - 1, day)
+      txDate.setHours(0, 0, 0, 0)
+
+      const from = new Date(dateRange.from)
+      from.setHours(0, 0, 0, 0)
+
+      if (dateRange.to) {
+        const to = new Date(dateRange.to)
+        to.setHours(23, 59, 59, 999)
+        matchDate = txDate >= from && txDate <= to
+      } else {
+        matchDate = txDate.getTime() === from.getTime()
+      }
+    }
+
+    return matchCrop && matchType && matchDate
   })
 
   filteredTransactions.sort((a, b) => {
@@ -178,7 +193,7 @@ export default function Financeiro() {
   const emptyMessage =
     filterType === 'Indefinidos'
       ? 'Nenhum registro pendente encontrado.'
-      : 'Nenhum lançamento encontrado.'
+      : 'Nenhum lançamento encontrado para os filtros atuais.'
 
   const classifiedCount = transactions.filter((t) => t.type !== 'indefinido').length
   const totalCount = transactions.length
@@ -209,13 +224,19 @@ export default function Financeiro() {
           <Progress value={progressPercentage} className="h-2" />
         </div>
 
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 print:hidden">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full lg:w-auto">
+        <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 print:hidden">
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-2 w-full xl:w-auto flex-wrap">
+            <DatePickerWithRange
+              date={dateRange}
+              setDate={setDateRange}
+              className="w-full sm:w-auto"
+            />
+
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <Filter className="h-4 w-4 text-muted-foreground hidden sm:block" />
               <Select value={filterCrop} onValueChange={setFilterCrop}>
-                <SelectTrigger className="w-full sm:w-[180px] bg-background">
-                  <SelectValue placeholder="Filtrar por Cultura" />
+                <SelectTrigger className="w-full sm:w-[150px] bg-background">
+                  <SelectValue placeholder="Culturas" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Todos">Todas as Culturas</SelectItem>
@@ -225,10 +246,11 @@ export default function Financeiro() {
                 </SelectContent>
               </Select>
             </div>
+
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <Select value={filterType} onValueChange={setFilterType}>
-                <SelectTrigger className="w-full sm:w-[180px] bg-background">
-                  <SelectValue placeholder="Filtrar por Tipo" />
+                <SelectTrigger className="w-full sm:w-[150px] bg-background">
+                  <SelectValue placeholder="Tipos" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Todos">Todos os Tipos</SelectItem>
@@ -238,41 +260,46 @@ export default function Financeiro() {
                 </SelectContent>
               </Select>
             </div>
+
             {!isViewer && (
               <Button
                 onClick={() => setIsMappingModalOpen(true)}
                 variant="outline"
-                className="gap-2 ml-auto lg:ml-2 text-blue-600 border-blue-200 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-900/50 dark:hover:bg-blue-900/20"
+                className="gap-2 w-full sm:w-auto text-blue-600 border-blue-200 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-900/50 dark:hover:bg-blue-900/20"
               >
                 <Wand2 className="h-4 w-4" />
                 <span className="hidden xl:inline">Regras (De-Para)</span>
+                <span className="inline xl:hidden">Regras</span>
               </Button>
             )}
           </div>
 
-          <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2 w-full lg:w-auto mt-2 lg:mt-0">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="gap-2">
-                  <Download className="h-4 w-4" />
-                  <span className="hidden sm:inline">Exportar</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => exportToCSV(filteredTransactions, equipments)}>
-                  <Download className="h-4 w-4 mr-2" /> Exportar CSV
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setTimeout(() => window.print(), 100)}>
-                  <Printer className="h-4 w-4 mr-2" /> Exportar PDF
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+          <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2 w-full xl:w-auto mt-2 xl:mt-0 items-center justify-start xl:justify-end">
+            <Button
+              variant="outline"
+              className="gap-2 w-full sm:w-auto"
+              onClick={() => exportToCSV(filteredTransactions, equipments)}
+            >
+              <Download className="h-4 w-4" />
+              <span className="hidden xl:inline">Exportar CSV</span>
+              <span className="inline xl:hidden">CSV</span>
+            </Button>
+            <Button
+              variant="outline"
+              className="gap-2 w-full sm:w-auto"
+              onClick={() => setTimeout(() => window.print(), 100)}
+            >
+              <Printer className="h-4 w-4" />
+              <span className="hidden xl:inline">Exportar PDF</span>
+              <span className="inline xl:hidden">PDF</span>
+            </Button>
+
             {!isViewer && (
               <>
                 <Button
                   onClick={() => setIsHistoryModalOpen(true)}
                   variant="outline"
-                  className="gap-2 hidden sm:flex"
+                  className="gap-2 hidden sm:flex w-full sm:w-auto"
                 >
                   <History className="h-4 w-4" />
                   Histórico
@@ -280,17 +307,18 @@ export default function Financeiro() {
                 <Button
                   onClick={() => setIsImportModalOpen(true)}
                   variant="secondary"
-                  className="gap-2"
+                  className="gap-2 w-full sm:w-auto"
                 >
                   <Upload className="h-4 w-4" />
-                  Importar
+                  <span className="hidden sm:inline">Importar</span>
                 </Button>
                 <Button
                   onClick={() => setIsQuickAddOpen(true)}
-                  className="gap-2 col-span-2 sm:col-span-1"
+                  className="gap-2 col-span-2 sm:col-span-1 w-full sm:w-auto"
                 >
                   <Plus className="h-4 w-4" />
-                  Novo Lançamento
+                  <span className="hidden sm:inline">Novo Lançamento</span>
+                  <span className="inline sm:hidden">Novo</span>
                 </Button>
               </>
             )}
