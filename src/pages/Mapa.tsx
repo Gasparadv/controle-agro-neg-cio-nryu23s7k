@@ -1,6 +1,7 @@
 import { useState } from 'react'
+import { Navigate } from 'react-router-dom'
 import { Tractor, Sprout, Wheat, Leaf } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
   Sheet,
@@ -11,6 +12,7 @@ import {
 } from '@/components/ui/sheet'
 import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
+import useAuthStore from '@/stores/useAuthStore'
 import { FarmPlot } from '@/types'
 
 const mockPlots: FarmPlot[] = [
@@ -74,7 +76,12 @@ const mockPlots: FarmPlot[] = [
 ]
 
 export default function Mapa() {
+  const { role } = useAuthStore()
   const [selectedPlot, setSelectedPlot] = useState<FarmPlot | null>(null)
+
+  if (role !== 'admin') {
+    return <Navigate to="/" replace />
+  }
 
   const getCropColor = (crop: string) => {
     switch (crop) {

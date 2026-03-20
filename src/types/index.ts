@@ -4,7 +4,7 @@ export type CropType = 'Soja' | 'Milho' | 'Cana' | 'Geral'
 
 export type TransactionStatus = 'pending' | 'approved' | 'rejected'
 
-export type Role = 'owner' | 'manager' | 'senior' | 'collaborator'
+export type Role = 'admin' | 'viewer'
 
 export interface User {
   id: string

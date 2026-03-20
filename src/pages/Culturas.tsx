@@ -1,8 +1,16 @@
+import { Navigate } from 'react-router-dom'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { SoyTimeline } from '@/components/culturas/SoyTimeline'
 import { CaneTimeline } from '@/components/culturas/CaneTimeline'
+import useAuthStore from '@/stores/useAuthStore'
 
 export default function Culturas() {
+  const { role } = useAuthStore()
+
+  if (role !== 'admin') {
+    return <Navigate to="/" replace />
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-2">

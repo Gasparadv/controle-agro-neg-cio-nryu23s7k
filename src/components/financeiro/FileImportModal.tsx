@@ -58,7 +58,7 @@ export function FileImportModal({
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const { transactions, addTransactions, addImportBatch, mappingRules } = useAgroStore()
-  const { role, userName } = useAuthStore()
+  const { role } = useAuthStore()
   const { toast } = useToast()
 
   const categorizeDescWithRules = (desc: string) => {
@@ -523,7 +523,6 @@ export function FileImportModal({
   }
 
   const handleImport = () => {
-    const isCollab = role === 'collaborator'
     const batchId = `batch-${Date.now()}`
 
     const validToImport = preview.filter((r) => !r.isDuplicate && !r.isInvalid)
@@ -562,8 +561,8 @@ export function FileImportModal({
         category: r.cat || 'Outros',
         comments: r.comments || `Arquivo: ${fileName}`,
         crop: (r.crop as any) || 'Geral',
-        status: isCollab ? 'pending' : 'approved',
-        collaboratorName: isCollab ? userName : undefined,
+        status: 'approved',
+        collaboratorName: undefined,
         importBatchId: batchId,
         fitid: r.fitid,
       }

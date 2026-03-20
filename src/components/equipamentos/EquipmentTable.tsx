@@ -17,9 +17,10 @@ import useEquipmentStore from '@/stores/useEquipmentStore'
 interface EquipmentTableProps {
   equipments: Equipment[]
   onEdit: (eq: Equipment) => void
+  readOnly?: boolean
 }
 
-export function EquipmentTable({ equipments, onEdit }: EquipmentTableProps) {
+export function EquipmentTable({ equipments, onEdit, readOnly = false }: EquipmentTableProps) {
   const { deleteEquipment } = useEquipmentStore()
   const { toast } = useToast()
 
@@ -72,7 +73,7 @@ export function EquipmentTable({ equipments, onEdit }: EquipmentTableProps) {
             <TableHead>Status</TableHead>
             <TableHead>Aquisição</TableHead>
             <TableHead>Venda</TableHead>
-            <TableHead className="text-right">Ações</TableHead>
+            {!readOnly && <TableHead className="text-right">Ações</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -118,24 +119,29 @@ export function EquipmentTable({ equipments, onEdit }: EquipmentTableProps) {
                   <span className="text-xs text-muted-foreground italic">-</span>
                 )}
               </TableCell>
-              <TableCell className="text-right">
-                <Button variant="ghost" size="icon" onClick={() => onEdit(eq)}>
-                  <Edit2 className="h-4 w-4 text-muted-foreground" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-destructive hover:bg-destructive/10"
-                  onClick={() => handleDelete(eq.id)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </TableCell>
+              {!readOnly && (
+                <TableCell className="text-right">
+                  <Button variant="ghost" size="icon" onClick={() => onEdit(eq)}>
+                    <Edit2 className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-destructive hover:bg-destructive/10"
+                    onClick={() => handleDelete(eq.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </TableCell>
+              )}
             </TableRow>
           ))}
           {equipments.length === 0 && (
             <TableRow>
-              <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+              <TableCell
+                colSpan={readOnly ? 5 : 6}
+                className="h-24 text-center text-muted-foreground"
+              >
                 Nenhum equipamento registrado.
               </TableCell>
             </TableRow>

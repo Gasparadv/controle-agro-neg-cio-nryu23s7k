@@ -35,7 +35,7 @@ const formSchema = z.object({
   name: z.string().min(2, 'O nome deve ter pelo menos 2 caracteres'),
   email: z.string().email('Formato de e-mail inválido'),
   password: z.string().min(6, 'A senha deve ter pelo menos 6 caracteres'),
-  role: z.enum(['owner', 'manager', 'senior', 'collaborator']),
+  role: z.enum(['admin', 'viewer']),
 })
 
 type FormValues = z.infer<typeof formSchema>
@@ -56,7 +56,7 @@ export function UserFormModal({ open, onOpenChange, userToEdit }: UserFormModalP
       name: '',
       email: '',
       password: '',
-      role: 'collaborator',
+      role: 'viewer',
     },
   })
 
@@ -67,14 +67,14 @@ export function UserFormModal({ open, onOpenChange, userToEdit }: UserFormModalP
           name: userToEdit.name,
           email: userToEdit.email,
           password: userToEdit.password || '',
-          role: userToEdit.role,
+          role: userToEdit.role as 'admin' | 'viewer',
         })
       } else {
         form.reset({
           name: '',
           email: '',
           password: '',
-          role: 'collaborator',
+          role: 'viewer',
         })
       }
     }
@@ -170,10 +170,8 @@ export function UserFormModal({ open, onOpenChange, userToEdit }: UserFormModalP
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="owner">Proprietário</SelectItem>
-                      <SelectItem value="manager">Gestor Master</SelectItem>
-                      <SelectItem value="senior">Pleno</SelectItem>
-                      <SelectItem value="collaborator">Colaborador</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="viewer">Visualizador</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />

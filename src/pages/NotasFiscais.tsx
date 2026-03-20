@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Navigate } from 'react-router-dom'
 import { Upload, Filter } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -11,13 +12,19 @@ import {
 import { InvoiceTable } from '@/components/notas/InvoiceTable'
 import { InvoiceUploadModal } from '@/components/notas/InvoiceUploadModal'
 import useInvoiceStore from '@/stores/useInvoiceStore'
+import useAuthStore from '@/stores/useAuthStore'
 
 export default function NotasFiscais() {
+  const { role } = useAuthStore()
   const { invoices } = useInvoiceStore()
 
   const currentYear = new Date().getFullYear().toString()
   const [filterYear, setFilterYear] = useState<string>(currentYear)
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
+
+  if (role !== 'admin') {
+    return <Navigate to="/" replace />
+  }
 
   const filteredInvoices = invoices.filter(
     (inv) => filterYear === 'Todos' || inv.fiscalYear.toString() === filterYear,

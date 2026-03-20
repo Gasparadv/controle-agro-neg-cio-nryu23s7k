@@ -4,20 +4,25 @@ import { Button } from '@/components/ui/button'
 import { EquipmentTable } from '@/components/equipamentos/EquipmentTable'
 import { EquipmentModal } from '@/components/equipamentos/EquipmentModal'
 import useEquipmentStore from '@/stores/useEquipmentStore'
+import useAuthStore from '@/stores/useAuthStore'
 import { Equipment } from '@/types'
 
 export default function Equipamentos() {
   const { equipments } = useEquipmentStore()
+  const { role } = useAuthStore()
+  const isViewer = role === 'viewer'
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedEquipmentForEdit, setSelectedEquipmentForEdit] = useState<Equipment | null>(null)
 
   const handleAddNew = () => {
+    if (isViewer) return
     setSelectedEquipmentForEdit(null)
     setIsModalOpen(true)
   }
 
   const handleEdit = (eq: Equipment) => {
+    if (isViewer) return
     setSelectedEquipmentForEdit(eq)
     setIsModalOpen(true)
   }
@@ -31,13 +36,15 @@ export default function Equipamentos() {
             Cadastre e gerencie tratores, veículos e implementos para associar despesas específicas.
           </p>
         </div>
-        <Button onClick={handleAddNew} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Registrar Equipamento
-        </Button>
+        {!isViewer && (
+          <Button onClick={handleAddNew} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Registrar Equipamento
+          </Button>
+        )}
       </div>
 
-      <EquipmentTable equipments={equipments} onEdit={handleEdit} />
+      <EquipmentTable equipments={equipments} onEdit={handleEdit} readOnly={isViewer} />
 
       <EquipmentModal
         open={isModalOpen}

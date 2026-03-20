@@ -41,6 +41,7 @@ import { QuickAddModal } from '@/components/financeiro/QuickAddModal'
 import { BulkActionsBar } from '@/components/financeiro/BulkActionsBar'
 import { MappingRulesModal } from '@/components/financeiro/MappingRulesModal'
 import useAgroStore from '@/stores/useAgroStore'
+import useAuthStore from '@/stores/useAuthStore'
 import useEquipmentStore from '@/stores/useEquipmentStore'
 import { useToast } from '@/hooks/use-toast'
 import { exportToCSV } from '@/lib/export'
@@ -49,6 +50,9 @@ import { Transaction } from '@/types'
 const ITEMS_PER_PAGE = 10
 
 export default function Financeiro() {
+  const { role } = useAuthStore()
+  const isViewer = role === 'viewer'
+
   const {
     transactions,
     updateTransaction,
@@ -101,6 +105,7 @@ export default function Financeiro() {
   )
 
   const handleRowClick = (tx: Transaction) => {
+    if (isViewer) return
     setSelectedTx(tx)
     setIsSheetOpen(true)
   }
@@ -226,14 +231,16 @@ export default function Financeiro() {
                 </SelectContent>
               </Select>
             </div>
-            <Button
-              onClick={() => setIsMappingModalOpen(true)}
-              variant="outline"
-              className="gap-2 ml-auto lg:ml-2 text-blue-600 border-blue-200 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-900/50 dark:hover:bg-blue-900/20"
-            >
-              <Wand2 className="h-4 w-4" />
-              <span className="hidden xl:inline">Regras (De-Para)</span>
-            </Button>
+            {!isViewer && (
+              <Button
+                onClick={() => setIsMappingModalOpen(true)}
+                variant="outline"
+                className="gap-2 ml-auto lg:ml-2 text-blue-600 border-blue-200 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-900/50 dark:hover:bg-blue-900/20"
+              >
+                <Wand2 className="h-4 w-4" />
+                <span className="hidden xl:inline">Regras (De-Para)</span>
+              </Button>
+            )}
           </div>
 
           <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2 w-full lg:w-auto mt-2 lg:mt-0">
@@ -253,29 +260,33 @@ export default function Financeiro() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button
-              onClick={() => setIsHistoryModalOpen(true)}
-              variant="outline"
-              className="gap-2 hidden sm:flex"
-            >
-              <History className="h-4 w-4" />
-              Histórico
-            </Button>
-            <Button
-              onClick={() => setIsImportModalOpen(true)}
-              variant="secondary"
-              className="gap-2"
-            >
-              <Upload className="h-4 w-4" />
-              Importar
-            </Button>
-            <Button
-              onClick={() => setIsQuickAddOpen(true)}
-              className="gap-2 col-span-2 sm:col-span-1"
-            >
-              <Plus className="h-4 w-4" />
-              Novo Lançamento
-            </Button>
+            {!isViewer && (
+              <>
+                <Button
+                  onClick={() => setIsHistoryModalOpen(true)}
+                  variant="outline"
+                  className="gap-2 hidden sm:flex"
+                >
+                  <History className="h-4 w-4" />
+                  Histórico
+                </Button>
+                <Button
+                  onClick={() => setIsImportModalOpen(true)}
+                  variant="secondary"
+                  className="gap-2"
+                >
+                  <Upload className="h-4 w-4" />
+                  Importar
+                </Button>
+                <Button
+                  onClick={() => setIsQuickAddOpen(true)}
+                  className="gap-2 col-span-2 sm:col-span-1"
+                >
+                  <Plus className="h-4 w-4" />
+                  Novo Lançamento
+                </Button>
+              </>
+            )}
           </div>
         </div>
 
@@ -288,6 +299,7 @@ export default function Financeiro() {
           selectedIds={selectedIds}
           onSelectAll={handleSelectAll}
           onSelectRow={handleSelectRow}
+          readOnly={isViewer}
         />
 
         {totalPages > 1 && (
@@ -320,7 +332,7 @@ export default function Financeiro() {
           </div>
         )}
 
-        {selectedIds.length > 0 && (
+        {!isViewer && selectedIds.length > 0 && (
           <BulkActionsBar
             selectedCount={selectedIds.length}
             onUpdate={(updates) => {

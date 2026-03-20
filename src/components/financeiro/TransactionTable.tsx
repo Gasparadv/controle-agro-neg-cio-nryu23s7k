@@ -33,6 +33,7 @@ interface TransactionTableProps {
   selectedIds?: string[]
   onSelectAll?: (checked: boolean) => void
   onSelectRow?: (id: string, checked: boolean) => void
+  readOnly?: boolean
 }
 
 export function TransactionTable({
@@ -44,6 +45,7 @@ export function TransactionTable({
   selectedIds = [],
   onSelectAll,
   onSelectRow,
+  readOnly = false,
 }: TransactionTableProps) {
   const { equipments } = useEquipmentStore()
 
@@ -85,6 +87,7 @@ export function TransactionTable({
     tx: Transaction,
     field: 'category' | 'crop' | 'comments' | 'equipmentId',
   ) => {
+    if (readOnly) return
     e.stopPropagation()
     setEditId(tx.id)
     setEditField(field)
@@ -112,8 +115,8 @@ export function TransactionTable({
       <Table>
         <TableHeader>
           <TableRow className="bg-muted/50">
-            <TableHead className="w-[40px] print:hidden">
-              {onSelectAll && (
+            <TableHead className={cn('w-[40px] print:hidden', readOnly && 'hidden')}>
+              {!readOnly && onSelectAll && (
                 <Checkbox checked={allSelected} onCheckedChange={(c) => onSelectAll(c === true)} />
               )}
             </TableHead>
@@ -124,7 +127,7 @@ export function TransactionTable({
             <TableHead>Cultura</TableHead>
             <TableHead className="text-right">Valor / Tipo</TableHead>
             <TableHead className="hidden md:table-cell">Comentários</TableHead>
-            <TableHead className="w-[50px] print:hidden"></TableHead>
+            <TableHead className={cn('w-[50px] print:hidden', readOnly && 'hidden')}></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -135,15 +138,19 @@ export function TransactionTable({
                 key={tx.id}
                 onClick={() => onSelect(tx)}
                 className={cn(
-                  'cursor-pointer hover:bg-muted/60 transition-colors',
+                  'transition-colors',
+                  !readOnly && 'cursor-pointer hover:bg-muted/60',
                   tx.status === 'rejected' && 'opacity-60',
                   tx.type === 'indefinido' &&
                     'bg-orange-500/5 hover:bg-orange-500/10 border-l-2 border-l-orange-500',
                   selectedIds.includes(tx.id) && 'bg-primary/5',
                 )}
               >
-                <TableCell className="w-[40px] print:hidden" onClick={(e) => e.stopPropagation()}>
-                  {onSelectRow && (
+                <TableCell
+                  className={cn('w-[40px] print:hidden', readOnly && 'hidden')}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {!readOnly && onSelectRow && (
                     <Checkbox
                       checked={selectedIds.includes(tx.id)}
                       onCheckedChange={(c) => onSelectRow(tx.id, c === true)}
@@ -173,7 +180,7 @@ export function TransactionTable({
                 </TableCell>
                 <TableCell>
                   <div className="flex flex-col items-start gap-1">
-                    {editId === tx.id && editField === 'category' ? (
+                    {editId === tx.id && editField === 'category' && !readOnly ? (
                       <div onClick={(e) => e.stopPropagation()} className="w-[150px]">
                         <Select
                           defaultOpen
@@ -203,7 +210,10 @@ export function TransactionTable({
                       </div>
                     ) : (
                       <div
-                        className="group flex items-center gap-1 cursor-pointer"
+                        className={cn(
+                          'group flex items-center gap-1',
+                          !readOnly && 'cursor-pointer',
+                        )}
                         onClick={(e) => startEdit(e, tx, 'category')}
                       >
                         <Badge
@@ -212,14 +222,16 @@ export function TransactionTable({
                         >
                           {tx.category}
                         </Badge>
-                        <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-100 text-muted-foreground print:hidden" />
+                        {!readOnly && (
+                          <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-100 text-muted-foreground print:hidden" />
+                        )}
                       </div>
                     )}
                     {getStatusBadge(tx.status)}
                   </div>
                 </TableCell>
                 <TableCell className="hidden lg:table-cell text-muted-foreground text-xs">
-                  {editId === tx.id && editField === 'equipmentId' ? (
+                  {editId === tx.id && editField === 'equipmentId' && !readOnly ? (
                     <div onClick={(e) => e.stopPropagation()} className="w-[150px]">
                       <Select
                         defaultOpen
@@ -247,7 +259,7 @@ export function TransactionTable({
                     </div>
                   ) : (
                     <div
-                      className="group flex items-center gap-1 cursor-pointer"
+                      className={cn('group flex items-center gap-1', !readOnly && 'cursor-pointer')}
                       onClick={(e) => startEdit(e, tx, 'equipmentId')}
                     >
                       {eqName ? (
@@ -260,12 +272,14 @@ export function TransactionTable({
                       ) : (
                         <span>-</span>
                       )}
-                      <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-100 text-muted-foreground print:hidden" />
+                      {!readOnly && (
+                        <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-100 text-muted-foreground print:hidden" />
+                      )}
                     </div>
                   )}
                 </TableCell>
                 <TableCell>
-                  {editId === tx.id && editField === 'crop' ? (
+                  {editId === tx.id && editField === 'crop' && !readOnly ? (
                     <div onClick={(e) => e.stopPropagation()} className="w-[120px]">
                       <Select
                         defaultOpen
@@ -291,11 +305,13 @@ export function TransactionTable({
                     </div>
                   ) : (
                     <div
-                      className="group flex items-center gap-1 cursor-pointer"
+                      className={cn('group flex items-center gap-1', !readOnly && 'cursor-pointer')}
                       onClick={(e) => startEdit(e, tx, 'crop')}
                     >
                       <span>{tx.crop}</span>
-                      <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-100 text-muted-foreground print:hidden" />
+                      {!readOnly && (
+                        <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-100 text-muted-foreground print:hidden" />
+                      )}
                     </div>
                   )}
                 </TableCell>
@@ -305,30 +321,32 @@ export function TransactionTable({
                       <span className="font-medium text-muted-foreground">
                         {formatBRL(Math.abs(tx.amount))}
                       </span>
-                      <div className="flex gap-1">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-6 px-2 text-[10px] bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            onUpdate?.(tx, { type: 'receita' })
-                          }}
-                        >
-                          Receita
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-6 px-2 text-[10px] bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            onUpdate?.(tx, { type: 'despesa' })
-                          }}
-                        >
-                          Despesa
-                        </Button>
-                      </div>
+                      {!readOnly && (
+                        <div className="flex gap-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-6 px-2 text-[10px] bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onUpdate?.(tx, { type: 'receita' })
+                            }}
+                          >
+                            Receita
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-6 px-2 text-[10px] bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onUpdate?.(tx, { type: 'despesa' })
+                            }}
+                          >
+                            Despesa
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <span
@@ -344,7 +362,7 @@ export function TransactionTable({
                   )}
                 </TableCell>
                 <TableCell className="hidden md:table-cell text-muted-foreground max-w-[200px]">
-                  {editId === tx.id && editField === 'comments' ? (
+                  {editId === tx.id && editField === 'comments' && !readOnly ? (
                     <div
                       onClick={(e) => e.stopPropagation()}
                       className="flex items-center gap-1 w-full"
@@ -360,18 +378,23 @@ export function TransactionTable({
                     </div>
                   ) : (
                     <div
-                      className="group flex items-center gap-1 cursor-pointer truncate"
+                      className={cn(
+                        'group flex items-center gap-1 truncate',
+                        !readOnly && 'cursor-pointer',
+                      )}
                       onClick={(e) => startEdit(e, tx, 'comments')}
                     >
                       <span className="truncate" title={tx.comments}>
                         {tx.comments || '-'}
                       </span>
-                      <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-100 text-muted-foreground shrink-0 print:hidden" />
+                      {!readOnly && (
+                        <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-100 text-muted-foreground shrink-0 print:hidden" />
+                      )}
                     </div>
                   )}
                 </TableCell>
-                <TableCell className="text-right pr-4 print:hidden">
-                  {onDelete && (
+                <TableCell className={cn('text-right pr-4 print:hidden', readOnly && 'hidden')}>
+                  {!readOnly && onDelete && (
                     <Button
                       variant="ghost"
                       size="icon"

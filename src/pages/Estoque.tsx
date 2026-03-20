@@ -1,13 +1,16 @@
 import { useState } from 'react'
+import { Navigate } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { InventoryTable } from '@/components/estoque/InventoryTable'
 import { InventoryItemModal } from '@/components/estoque/InventoryItemModal'
 import { InventoryMovementModal } from '@/components/estoque/InventoryMovementModal'
 import useInventoryStore from '@/stores/useInventoryStore'
+import useAuthStore from '@/stores/useAuthStore'
 import { InventoryItem } from '@/types'
 
 export default function Estoque() {
+  const { role } = useAuthStore()
   const { items } = useInventoryStore()
 
   const [isItemModalOpen, setIsItemModalOpen] = useState(false)
@@ -15,6 +18,10 @@ export default function Estoque() {
 
   const [isMovementModalOpen, setIsMovementModalOpen] = useState(false)
   const [selectedItemForMovement, setSelectedItemForMovement] = useState<InventoryItem | null>(null)
+
+  if (role !== 'admin') {
+    return <Navigate to="/" replace />
+  }
 
   const handleAddNew = () => {
     setSelectedItemForEdit(null)

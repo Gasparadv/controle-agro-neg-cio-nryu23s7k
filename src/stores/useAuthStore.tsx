@@ -16,7 +16,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [activeUserId, setActiveUserId] = useState<string>('u1')
 
   const user = users.find((u) => u.id === activeUserId) || users[0] || null
-  const role = user?.role || 'owner'
+  const role = user?.role || 'admin'
   const userName = user?.name || 'Desconhecido'
 
   return (

@@ -10,8 +10,8 @@ import {
   Plus,
   Map as MapIcon,
   CheckSquare,
-  Users,
   Tractor,
+  Settings,
 } from 'lucide-react'
 import {
   SidebarProvider,
@@ -51,7 +51,7 @@ const titleMap: Record<string, string> = {
   '/relatorios': 'Relatórios Gerenciais',
   '/mapa': 'Mapa da Fazenda',
   '/aprovacoes': 'Aprovações Pendentes',
-  '/equipe': 'Gerenciamento de Equipe',
+  '/configuracoes': 'Configurações e Segurança',
 }
 
 export function Layout() {
@@ -65,33 +65,38 @@ export function Layout() {
 
   const pendingCount = transactions.filter((t) => t.status === 'pending').length
 
-  const navItems = [
+  const viewerNavItems = [
     { name: 'Visão Geral', path: '/', icon: LayoutDashboard },
-    { name: 'Mapa da Fazenda', path: '/mapa', icon: MapIcon },
     { name: 'Financeiro', path: '/financeiro', icon: Wallet },
-    { name: 'Estoque', path: '/estoque', icon: Boxes },
-    { name: 'Culturas', path: '/culturas', icon: Sprout },
     { name: 'Equipamentos', path: '/equipamentos', icon: Tractor },
-    { name: 'Notas Fiscais', path: '/notas-fiscais', icon: FileText },
     { name: 'Relatórios', path: '/relatorios', icon: PieChart },
   ]
 
-  if (role === 'owner' || role === 'manager') {
-    navItems.push({ name: 'Aprovações', path: '/aprovacoes', icon: CheckSquare })
-    navItems.push({ name: 'Equipe', path: '/equipe', icon: Users })
+  let allNavItems = []
+  if (role === 'admin') {
+    allNavItems = [
+      { name: 'Visão Geral', path: '/', icon: LayoutDashboard },
+      { name: 'Mapa da Fazenda', path: '/mapa', icon: MapIcon },
+      { name: 'Financeiro', path: '/financeiro', icon: Wallet },
+      { name: 'Estoque', path: '/estoque', icon: Boxes },
+      { name: 'Culturas', path: '/culturas', icon: Sprout },
+      { name: 'Equipamentos', path: '/equipamentos', icon: Tractor },
+      { name: 'Notas Fiscais', path: '/notas-fiscais', icon: FileText },
+      { name: 'Relatórios', path: '/relatorios', icon: PieChart },
+      { name: 'Aprovações', path: '/aprovacoes', icon: CheckSquare },
+      { name: 'Configurações', path: '/configuracoes', icon: Settings },
+    ]
+  } else {
+    allNavItems = viewerNavItems
   }
 
   const getRoleLabel = (r: string) => {
     switch (r) {
-      case 'owner':
-        return 'Prop.'
-      case 'manager':
-        return 'Gestor'
-      case 'senior':
-        return 'Pleno'
-      case 'collaborator':
+      case 'admin':
+        return 'Admin'
+      case 'viewer':
       default:
-        return 'Colab.'
+        return 'Visualizador'
     }
   }
 
@@ -108,7 +113,7 @@ export function Layout() {
           <SidebarContent className="py-4">
             <SidebarGroup>
               <SidebarMenu>
-                {navItems.map((item) => {
+                {allNavItems.map((item) => {
                   const isActive = location.pathname === item.path
                   const isAprovacoes = item.path === '/aprovacoes'
                   return (
@@ -156,7 +161,7 @@ export function Layout() {
                     {users.map((u) => (
                       <SelectItem key={u.id} value={u.id}>
                         <div className="flex items-center gap-2">
-                          <span className={u.role === 'owner' ? 'text-primary' : 'text-foreground'}>
+                          <span className={u.role === 'admin' ? 'text-primary' : 'text-foreground'}>
                             {u.name}
                           </span>
                           <span className="text-xs text-muted-foreground">
@@ -173,10 +178,12 @@ export function Layout() {
                 Fazenda Boa Vista
               </div>
               <NotificationBell />
-              <Button onClick={() => setIsQuickAddOpen(true)} size="sm" className="gap-2">
-                <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline">Lançamento</span>
-              </Button>
+              {role === 'admin' && (
+                <Button onClick={() => setIsQuickAddOpen(true)} size="sm" className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  <span className="hidden sm:inline">Lançamento</span>
+                </Button>
+              )}
             </div>
           </header>
           <main className="flex-1 overflow-x-hidden p-4 md:p-6 lg:p-8">

@@ -31,7 +31,7 @@ interface QuickAddModalProps {
 
 export function QuickAddModal({ open, onOpenChange }: QuickAddModalProps) {
   const { addTransaction } = useAgroStore()
-  const { role, userName } = useAuthStore()
+  const { role } = useAuthStore()
   const { equipments } = useEquipmentStore()
   const { toast } = useToast()
 
@@ -86,18 +86,14 @@ export function QuickAddModal({ open, onOpenChange }: QuickAddModalProps) {
       crop,
       equipmentId: equipmentId !== 'none' ? equipmentId : undefined,
       comments,
-      status: role === 'collaborator' ? 'pending' : 'approved',
-      collaboratorName: role === 'collaborator' ? userName : undefined,
+      status: 'approved',
     }
 
     addTransaction(newTx)
 
     toast({
-      title: role === 'collaborator' ? 'Lançamento Pendente' : 'Lançamento Adicionado',
-      description:
-        role === 'collaborator'
-          ? 'Seu lançamento foi enviado para aprovação.'
-          : 'O registro foi adicionado com sucesso.',
+      title: 'Lançamento Adicionado',
+      description: 'O registro foi adicionado com sucesso.',
     })
 
     setDescription('')
@@ -113,12 +109,7 @@ export function QuickAddModal({ open, onOpenChange }: QuickAddModalProps) {
       <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Novo Lançamento Rápido</DialogTitle>
-          <DialogDescription>
-            Insira os dados do lançamento financeiro.
-            {role === 'collaborator' && (
-              <span className="text-yellow-600 font-medium ml-1">Requererá aprovação.</span>
-            )}
-          </DialogDescription>
+          <DialogDescription>Insira os dados do lançamento financeiro.</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-2 gap-4">

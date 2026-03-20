@@ -37,7 +37,7 @@ export default function Aprovacoes() {
   })
   const [rejectionReason, setRejectionReason] = useState('')
 
-  if (role !== 'owner' && role !== 'manager') {
+  if (role !== 'admin') {
     return <Navigate to="/" replace />
   }
 
@@ -95,7 +95,7 @@ export default function Aprovacoes() {
       <div className="flex flex-col gap-1">
         <h2 className="text-2xl font-bold tracking-tight">Aprovações de Lançamentos</h2>
         <p className="text-muted-foreground text-sm">
-          Revise os lançamentos enviados por colaboradores antes de integrá-los ao fluxo financeiro.
+          Revise os lançamentos pendentes antes de integrá-los ao fluxo financeiro.
         </p>
       </div>
 

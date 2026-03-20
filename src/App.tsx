@@ -17,7 +17,7 @@ import NotasFiscais from './pages/NotasFiscais'
 import Relatorios from './pages/Relatorios'
 import Mapa from './pages/Mapa'
 import Aprovacoes from './pages/Aprovacoes'
-import Equipe from './pages/Equipe'
+import Configuracoes from './pages/Configuracoes'
 import Equipamentos from './pages/Equipamentos'
 import NotFound from './pages/NotFound'
 
@@ -43,7 +43,7 @@ const App = () => (
                       <Route path="/notas-fiscais" element={<NotasFiscais />} />
                       <Route path="/relatorios" element={<Relatorios />} />
                       <Route path="/aprovacoes" element={<Aprovacoes />} />
-                      <Route path="/equipe" element={<Equipe />} />
+                      <Route path="/configuracoes" element={<Configuracoes />} />
                     </Route>
                     <Route path="*" element={<NotFound />} />
                   </Routes>
