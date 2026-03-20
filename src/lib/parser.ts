@@ -5,7 +5,8 @@ export const parseAmount = (val: string | number | undefined | null): number => 
   if (typeof val === 'number') return val
 
   const strVal = String(val).trim()
-  const isNegative = strVal.includes('-') || /^\(.*\)$/.test(strVal)
+  const isNegative =
+    strVal.includes('-') || /^\(.*\)$/.test(strVal) || /([0-9.,]+)\s*D/i.test(strVal)
 
   let clean = strVal.replace(/[^0-9.,]/g, '')
   if (!clean) return 0

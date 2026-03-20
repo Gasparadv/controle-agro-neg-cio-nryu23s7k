@@ -83,8 +83,15 @@ export function TransactionTable({ transactions, onSelect }: TransactionTablePro
               </TableCell>
               <TableCell>{tx.crop}</TableCell>
               <TableCell className="text-right whitespace-nowrap">
-                <span className={tx.type === 'receita' ? 'text-primary font-medium' : ''}>
-                  {tx.type === 'despesa' ? '-' : '+'} {formatBRL(tx.amount)}
+                <span
+                  className={
+                    tx.type === 'receita'
+                      ? 'text-green-600 dark:text-green-500 font-medium'
+                      : 'text-destructive'
+                  }
+                >
+                  {tx.type === 'despesa' ? '- ' : '+ '}
+                  {formatBRL(Math.abs(tx.amount))}
                 </span>
               </TableCell>
               <TableCell className="hidden md:table-cell text-muted-foreground truncate max-w-[200px]">

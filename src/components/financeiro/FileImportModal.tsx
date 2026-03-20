@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react'
-import { CheckCircle2, ArrowRight, FileSpreadsheet } from 'lucide-react'
+import { useState, useRef, useTransition } from 'react'
+import { CheckCircle2, ArrowRight, FileSpreadsheet, Loader2 } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -39,11 +39,15 @@ export function FileImportModal({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
-  const [step, setStep] = useState<1 | 2 | 3>(1)
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1)
   const [fileName, setFileName] = useState('')
   const [workbook, setWorkbook] = useState<XLSX.WorkBook | null>(null)
   const [selectedSheet, setSelectedSheet] = useState<string>('')
   const [preview, setPreview] = useState<PreviewRow[]>([])
+  const [summary, setSummary] = useState<{ total: number; debits: number; credits: number } | null>(
+    null,
+  )
+  const [isPending, startTransition] = useTransition()
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -89,264 +93,273 @@ export function FileImportModal({
   }
 
   const validateAndPreviewOfx = (data: any[]) => {
-    const p: PreviewRow[] = []
+    startTransition(() => {
+      const p: PreviewRow[] = []
 
-    for (let i = 0; i < data.length; i++) {
-      const item = data[i]
+      const existingFitids = new Set(transactions.filter((t) => t.fitid).map((t) => t.fitid))
+      const existingTxSet = new Set(
+        transactions.map(
+          (tx) => `${tx.date}|${Math.abs(tx.amount)}|${tx.type}|${tx.description.toLowerCase()}`,
+        ),
+      )
 
-      const dateMatch = item.rawDate.match(/^(\d{4})(\d{2})(\d{2})/)
-      let dateStr = ''
-      let isDateValid = false
-      if (dateMatch) {
-        dateStr = `${dateMatch[1]}-${dateMatch[2]}-${dateMatch[3]}`
-        isDateValid = true
+      for (let i = 0; i < data.length; i++) {
+        const item = data[i]
+
+        const dateMatch = item.rawDate.match(/^(\d{4})(\d{2})(\d{2})/)
+        let dateStr = ''
+        let isDateValid = false
+        if (dateMatch) {
+          dateStr = `${dateMatch[1]}-${dateMatch[2]}-${dateMatch[3]}`
+          isDateValid = true
+        }
+
+        const parsedAmt = parseAmount(item.rawAmt)
+        const isAmtValid = !isNaN(parsedAmt) && item.rawAmt !== ''
+
+        let isInvalid = false
+        let errorMsg = ''
+
+        if (!isDateValid && !isAmtValid) {
+          isInvalid = true
+          errorMsg = 'Data e Valor inválidos'
+        } else if (!isDateValid) {
+          isInvalid = true
+          errorMsg = 'Data inválida'
+        } else if (!isAmtValid) {
+          isInvalid = true
+          errorMsg = 'Valor inválido'
+        }
+
+        const detectedType = parsedAmt < 0 ? 'despesa' : 'receita'
+        const desc = item.desc || 'Transação OFX'
+        const cat = categorizeDesc(desc)
+        const descLower = desc.toLowerCase()
+
+        const isDup =
+          !isInvalid &&
+          ((item.fitid && existingFitids.has(item.fitid)) ||
+            existingTxSet.has(`${dateStr}|${Math.abs(parsedAmt)}|${detectedType}|${descLower}`))
+
+        p.push({
+          index: i,
+          date: isDateValid ? dateStr : String(item.rawDate || 'Vazio'),
+          desc,
+          amount: parsedAmt,
+          cat,
+          crop: 'Geral',
+          comments: '',
+          type: detectedType,
+          isDuplicate: isDup,
+          isInvalid,
+          errorMsg,
+          rawAmt: String(item.rawAmt || ''),
+          fitid: item.fitid,
+        })
       }
 
-      const parsedAmt = parseAmount(item.rawAmt)
-      const isAmtValid = !isNaN(parsedAmt) && item.rawAmt !== ''
-
-      let isInvalid = false
-      let errorMsg = ''
-
-      if (!isDateValid && !isAmtValid) {
-        isInvalid = true
-        errorMsg = 'Data e Valor inválidos'
-      } else if (!isDateValid) {
-        isInvalid = true
-        errorMsg = 'Data inválida'
-      } else if (!isAmtValid) {
-        isInvalid = true
-        errorMsg = 'Valor inválido'
-      }
-
-      const detectedType = parsedAmt < 0 ? 'despesa' : 'receita'
-      const desc = item.desc || 'Transação OFX'
-      const cat = categorizeDesc(desc)
-
-      const isDup =
-        !isInvalid &&
-        transactions.some(
-          (tx) =>
-            (item.fitid && tx.fitid === item.fitid) ||
-            (tx.date === dateStr &&
-              tx.amount === Math.abs(parsedAmt) &&
-              tx.type === detectedType &&
-              tx.description === desc),
-        )
-
-      p.push({
-        index: i,
-        date: isDateValid ? dateStr : String(item.rawDate || 'Vazio'),
-        desc,
-        amount: parsedAmt,
-        cat,
-        crop: 'Geral',
-        comments: '',
-        type: detectedType,
-        isDuplicate: isDup,
-        isInvalid,
-        errorMsg,
-        rawAmt: String(item.rawAmt || ''),
-        fitid: item.fitid,
-      })
-    }
-
-    setPreview(p)
-    setStep(3)
+      setPreview(p)
+      setStep(3)
+    })
   }
 
   const validateAndPreview = (data: string[][]) => {
-    const p: PreviewRow[] = []
+    startTransition(() => {
+      const p: PreviewRow[] = []
 
-    let dateIdx = -1
-    let descIdx = -1
-    let amtIdx = -1
-    let typeIdx = -1
-    let catIdx = -1
-    let cropIdx = -1
-    let commentIdx = -1
-    let headerRowIdx = -1
+      let dateIdx = -1
+      let descIdx = -1
+      let amtIdx = -1
+      let typeIdx = -1
+      let catIdx = -1
+      let cropIdx = -1
+      let commentIdx = -1
+      let headerRowIdx = -1
 
-    for (let i = 0; i < Math.min(20, data.length); i++) {
-      const rowStr = data[i].map((c) => String(c).toLowerCase().trim())
-      if (rowStr.some((c) => c.includes('data') || c.includes('vencimento'))) {
-        const d = rowStr.findIndex(
-          (c) =>
-            c === 'data' || c === 'vencimento' || c.includes('data') || c.includes('vencimento'),
-        )
-        const de = rowStr.findIndex(
-          (c) => c.includes('descri') || c.includes('histórico') || c.includes('historico'),
-        )
-        const a = rowStr.findIndex(
-          (c) => c.includes('valor') || c.includes('quantia') || c.includes('montante'),
-        )
-        const t = rowStr.findIndex(
-          (c) =>
-            c === 'tipo' || c === 'natureza' || c === 'd/c' || c === 'situação' || c === 'situacao',
-        )
-        const cat = rowStr.findIndex((c) => c.includes('categoria') || c.includes('classifica'))
-        const crop = rowStr.findIndex(
-          (c) => c.includes('cultura') || c.includes('safra') || c === 'crop',
-        )
-        const cmt = rowStr.findIndex(
-          (c) => c.includes('comentário') || c.includes('comentario') || c.includes('obs'),
-        )
-
-        if (d !== -1 && a !== -1) {
-          dateIdx = d
-          descIdx = de
-          amtIdx = a
-          typeIdx = t
-          catIdx = cat
-          cropIdx = crop
-          commentIdx = cmt
-          headerRowIdx = i
-          break
-        }
-      }
-    }
-
-    if (headerRowIdx === -1) {
-      dateIdx = 0
-      descIdx = 1
-      amtIdx = 2
-    }
-
-    for (let i = 0; i < data.length; i++) {
-      if (i === headerRowIdx) continue
-
-      const row = data[i]
-      if (!row || !row.some((c) => c && c.trim() !== '')) continue
-
-      const rawDate = dateIdx !== -1 && dateIdx < row.length ? row[dateIdx] : ''
-      const rawDesc = descIdx !== -1 && descIdx < row.length ? row[descIdx] : ''
-      const rawAmt = amtIdx !== -1 && amtIdx < row.length ? row[amtIdx] : ''
-      const rawTypeMarkerF =
-        typeIdx !== -1 && typeIdx < row.length
-          ? String(row[typeIdx] || '')
-              .trim()
-              .toUpperCase()
-          : ''
-      const rawCat = catIdx !== -1 && catIdx < row.length ? row[catIdx] : ''
-      const rawCrop = cropIdx !== -1 && cropIdx < row.length ? row[cropIdx] : ''
-      const rawComment = commentIdx !== -1 && commentIdx < row.length ? row[commentIdx] : ''
-
-      if (
-        i === 0 &&
-        headerRowIdx === -1 &&
-        (String(rawDate).toLowerCase().includes('data') ||
-          String(rawDesc).toLowerCase().includes('descri') ||
-          String(rawAmt).toLowerCase().includes('valor'))
-      ) {
-        continue
-      }
-
-      const dateStr = parseDate(rawDate)
-      const isDateValid = /^\d{4}-\d{2}-\d{2}$/.test(dateStr)
-      const parsedAmt = parseAmount(rawAmt)
-      const hasNumbers = /\d/.test(String(rawAmt))
-      const isAmtValid = Boolean(rawAmt) && hasNumbers && !isNaN(parsedAmt)
-
-      let isInvalid = false
-      let errorMsg = ''
-
-      if (!isDateValid && !isAmtValid) {
-        isInvalid = true
-        errorMsg = 'Data e Valor inválidos'
-      } else if (!isDateValid) {
-        isInvalid = true
-        errorMsg = 'Data inválida'
-      } else if (!isAmtValid) {
-        isInvalid = true
-        errorMsg = 'Valor inválido'
-      }
-
-      let detectedType: 'receita' | 'despesa' | '' = ''
-
-      const debitMarkers = ['D', 'DEBITO', 'DÉBITO', 'DEBIT', 'DESPESA', 'SAÍDA', 'SAIDA']
-      const creditMarkers = ['C', 'CREDITO', 'CRÉDITO', 'CREDIT', 'RECEITA', 'ENTRADA']
-
-      if (rawTypeMarkerF && debitMarkers.includes(rawTypeMarkerF)) {
-        detectedType = 'despesa'
-      } else if (rawTypeMarkerF && creditMarkers.includes(rawTypeMarkerF)) {
-        detectedType = 'receita'
-      } else {
-        if (parsedAmt < 0) {
-          detectedType = 'despesa'
-        } else if (parsedAmt > 0) {
-          detectedType = 'receita'
-        } else {
-          const hasDebitMarker = row.some((c) =>
-            debitMarkers.includes(
-              String(c || '')
-                .trim()
-                .toUpperCase(),
-            ),
+      for (let i = 0; i < Math.min(20, data.length); i++) {
+        const rowStr = data[i].map((c) => String(c).toLowerCase().trim())
+        if (rowStr.some((c) => c.includes('data') || c.includes('vencimento'))) {
+          const d = rowStr.findIndex(
+            (c) =>
+              c === 'data' || c === 'vencimento' || c.includes('data') || c.includes('vencimento'),
           )
-          const hasCreditMarker = row.some((c) =>
-            creditMarkers.includes(
-              String(c || '')
-                .trim()
-                .toUpperCase(),
-            ),
+          const de = rowStr.findIndex(
+            (c) => c.includes('descri') || c.includes('histórico') || c.includes('historico'),
+          )
+          const a = rowStr.findIndex(
+            (c) => c.includes('valor') || c.includes('quantia') || c.includes('montante'),
+          )
+          const t = rowStr.findIndex(
+            (c) =>
+              c === 'tipo' ||
+              c === 'natureza' ||
+              c === 'd/c' ||
+              c === 'situação' ||
+              c === 'situacao',
+          )
+          const cat = rowStr.findIndex((c) => c.includes('categoria') || c.includes('classifica'))
+          const crop = rowStr.findIndex(
+            (c) => c.includes('cultura') || c.includes('safra') || c === 'crop',
+          )
+          const cmt = rowStr.findIndex(
+            (c) => c.includes('comentário') || c.includes('comentario') || c.includes('obs'),
           )
 
-          if (hasDebitMarker) {
-            detectedType = 'despesa'
-          } else if (hasCreditMarker) {
-            detectedType = 'receita'
+          if (d !== -1 && a !== -1) {
+            dateIdx = d
+            descIdx = de
+            amtIdx = a
+            typeIdx = t
+            catIdx = cat
+            cropIdx = crop
+            commentIdx = cmt
+            headerRowIdx = i
+            break
           }
         }
       }
 
-      const desc = String(rawDesc).trim()
-      const cat = rawCat ? String(rawCat).trim() : categorizeDesc(desc)
+      if (headerRowIdx === -1) {
+        dateIdx = 0
+        descIdx = 1
+        amtIdx = 2
+      }
 
-      const vCrop = String(rawCrop).toLowerCase()
-      let crop: 'Soja' | 'Milho' | 'Cana' | 'Geral' = 'Geral'
-      if (vCrop.includes('soja')) crop = 'Soja'
-      else if (vCrop.includes('milho')) crop = 'Milho'
-      else if (vCrop.includes('cana')) crop = 'Cana'
+      const existingTxSet = new Set(
+        transactions.map(
+          (tx) => `${tx.date}|${Math.abs(tx.amount)}|${tx.type}|${tx.description.toLowerCase()}`,
+        ),
+      )
 
-      const isDup =
-        !isInvalid &&
-        detectedType !== '' &&
-        transactions.some(
-          (tx) =>
-            tx.date === dateStr &&
-            tx.amount === Math.abs(parsedAmt) &&
-            tx.type === detectedType &&
-            tx.description === desc,
-        )
+      for (let i = 0; i < data.length; i++) {
+        if (i === headerRowIdx) continue
 
-      p.push({
-        index: i,
-        date: isDateValid ? dateStr : String(rawDate || 'Vazio'),
-        desc,
-        amount: parsedAmt,
-        cat,
-        crop,
-        comments: String(rawComment).trim(),
-        type: detectedType,
-        isDuplicate: isDup,
-        isInvalid,
-        errorMsg,
-        rawAmt: String(rawAmt || ''),
-      })
-    }
+        const row = data[i]
+        if (!row || !row.some((c) => c && c.trim() !== '')) continue
 
-    if (p.length === 0) {
-      toast({
-        variant: 'destructive',
-        title: 'Formato Inválido',
-        description: 'O arquivo não contém dados a serem importados nas colunas corretas.',
-      })
-      setStep(1)
-      return
-    }
+        const rawDate = dateIdx !== -1 && dateIdx < row.length ? row[dateIdx] : ''
+        const rawDesc = descIdx !== -1 && descIdx < row.length ? row[descIdx] : ''
+        const rawAmt = amtIdx !== -1 && amtIdx < row.length ? row[amtIdx] : ''
+        const rawTypeMarkerF =
+          typeIdx !== -1 && typeIdx < row.length
+            ? String(row[typeIdx] || '')
+                .trim()
+                .toUpperCase()
+            : ''
+        const rawCat = catIdx !== -1 && catIdx < row.length ? row[catIdx] : ''
+        const rawCrop = cropIdx !== -1 && cropIdx < row.length ? row[cropIdx] : ''
+        const rawComment = commentIdx !== -1 && commentIdx < row.length ? row[commentIdx] : ''
 
-    setPreview(p)
-    setStep(3)
+        if (
+          i === 0 &&
+          headerRowIdx === -1 &&
+          (String(rawDate).toLowerCase().includes('data') ||
+            String(rawDesc).toLowerCase().includes('descri') ||
+            String(rawAmt).toLowerCase().includes('valor'))
+        ) {
+          continue
+        }
+
+        const dateStr = parseDate(rawDate)
+        const isDateValid = /^\d{4}-\d{2}-\d{2}$/.test(dateStr)
+        const parsedAmt = parseAmount(rawAmt)
+        const hasNumbers = /\d/.test(String(rawAmt))
+        const isAmtValid = Boolean(rawAmt) && hasNumbers && !isNaN(parsedAmt)
+
+        let isInvalid = false
+        let errorMsg = ''
+
+        if (!isDateValid && !isAmtValid) {
+          isInvalid = true
+          errorMsg = 'Data e Valor inválidos'
+        } else if (!isDateValid) {
+          isInvalid = true
+          errorMsg = 'Data inválida'
+        } else if (!isAmtValid) {
+          isInvalid = true
+          errorMsg = 'Valor inválido'
+        }
+
+        let detectedType: 'receita' | 'despesa' | '' = ''
+
+        const debitMarkers = ['D', 'DEBITO', 'DÉBITO', 'DEBIT', 'DESPESA', 'SAÍDA', 'SAIDA', '-']
+        const creditMarkers = ['C', 'CREDITO', 'CRÉDITO', 'CREDIT', 'RECEITA', 'ENTRADA', '+']
+
+        if (rawTypeMarkerF && debitMarkers.includes(rawTypeMarkerF)) {
+          detectedType = 'despesa'
+        } else if (rawTypeMarkerF && creditMarkers.includes(rawTypeMarkerF)) {
+          detectedType = 'receita'
+        } else {
+          if (parsedAmt < 0) {
+            detectedType = 'despesa'
+          } else if (parsedAmt > 0) {
+            detectedType = 'receita'
+          } else {
+            const hasDebitMarker = row.some((c) =>
+              debitMarkers.includes(
+                String(c || '')
+                  .trim()
+                  .toUpperCase(),
+              ),
+            )
+            const hasCreditMarker = row.some((c) =>
+              creditMarkers.includes(
+                String(c || '')
+                  .trim()
+                  .toUpperCase(),
+              ),
+            )
+
+            if (hasDebitMarker) detectedType = 'despesa'
+            else if (hasCreditMarker) detectedType = 'receita'
+          }
+        }
+
+        const desc = String(rawDesc).trim()
+        const cat = rawCat ? String(rawCat).trim() : categorizeDesc(desc)
+
+        const vCrop = String(rawCrop).toLowerCase()
+        let crop: 'Soja' | 'Milho' | 'Cana' | 'Geral' = 'Geral'
+        if (vCrop.includes('soja')) crop = 'Soja'
+        else if (vCrop.includes('milho')) crop = 'Milho'
+        else if (vCrop.includes('cana')) crop = 'Cana'
+
+        const descLower = desc.toLowerCase()
+
+        const isDup =
+          !isInvalid &&
+          detectedType !== '' &&
+          existingTxSet.has(`${dateStr}|${Math.abs(parsedAmt)}|${detectedType}|${descLower}`)
+
+        p.push({
+          index: i,
+          date: isDateValid ? dateStr : String(rawDate || 'Vazio'),
+          desc,
+          amount: parsedAmt,
+          cat,
+          crop,
+          comments: String(rawComment).trim(),
+          type: detectedType,
+          isDuplicate: isDup,
+          isInvalid,
+          errorMsg,
+          rawAmt: String(rawAmt || ''),
+        })
+      }
+
+      if (p.length === 0) {
+        toast({
+          variant: 'destructive',
+          title: 'Formato Inválido',
+          description: 'O arquivo não contém dados a serem importados nas colunas corretas.',
+        })
+        setStep(1)
+        return
+      }
+
+      setPreview(p)
+      setStep(3)
+    })
   }
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -440,11 +453,12 @@ export function FileImportModal({
     }
 
     const txs: Transaction[] = validToImport.map((r, i) => {
+      const finalAmt = r.type === 'despesa' ? -Math.abs(r.amount) : Math.abs(r.amount)
       return {
         id: `imp-${Date.now()}-${i}`,
         date: r.date,
         description: r.desc || 'Importado',
-        amount: Math.abs(r.amount),
+        amount: finalAmt,
         type: r.type as 'receita' | 'despesa',
         category: r.cat || 'Outros',
         comments: r.comments || `Arquivo: ${fileName}`,
@@ -463,8 +477,11 @@ export function FileImportModal({
       fileName,
       recordCount: txs.length,
     })
-    toast({ title: 'Sucesso', description: `${txs.length} registros importados com sucesso.` })
-    handleClose()
+
+    const debits = txs.filter((t) => t.type === 'despesa').length
+    const credits = txs.filter((t) => t.type === 'receita').length
+    setSummary({ total: txs.length, debits, credits })
+    setStep(4)
   }
 
   const handleClose = () => {
@@ -473,6 +490,7 @@ export function FileImportModal({
     setWorkbook(null)
     setSelectedSheet('')
     setPreview([])
+    setSummary(null)
     if (fileInputRef.current) fileInputRef.current.value = ''
     onOpenChange(false)
   }
@@ -495,9 +513,9 @@ export function FileImportModal({
           (tx) =>
             (r.fitid && tx.fitid === r.fitid) ||
             (tx.date === r.date &&
-              tx.amount === Math.abs(r.amount) &&
+              tx.amount === (r.type === 'despesa' ? -Math.abs(r.amount) : Math.abs(r.amount)) &&
               tx.type === r.type &&
-              tx.description === r.desc),
+              tx.description.toLowerCase() === r.desc.toLowerCase()),
         )
       }
       copy[index] = r
@@ -522,11 +540,17 @@ export function FileImportModal({
             {step === 1 && 'Faça o upload do seu arquivo de extrato (.ofx, .csv, .xlsx, .xls).'}
             {step === 2 && 'O arquivo possui múltiplas abas. Selecione qual deseja importar.'}
             {step === 3 && 'Confirme as categorizações e salve seus registros.'}
+            {step === 4 && 'Resumo do processamento do lote.'}
           </DialogDescription>
         </DialogHeader>
 
         {step === 1 && (
-          <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg bg-muted/10 gap-4 transition-colors hover:bg-muted/30 my-4">
+          <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg bg-muted/10 gap-4 transition-colors hover:bg-muted/30 my-4 relative">
+            {isPending && (
+              <div className="absolute inset-0 bg-background/50 z-10 flex items-center justify-center rounded-lg">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            )}
             <FileSpreadsheet className="h-10 w-10 text-muted-foreground" />
             <Label
               htmlFor="file-upload"
@@ -541,6 +565,7 @@ export function FileImportModal({
               accept=".csv, .xlsx, .xls, .ofx"
               className="hidden"
               onChange={handleFile}
+              disabled={isPending}
             />
             <p className="text-xs text-muted-foreground">
               Formatos suportados: OFX, CSV, XLSX, XLS
@@ -552,7 +577,7 @@ export function FileImportModal({
           <div className="grid gap-4 py-6">
             <div className="space-y-2">
               <Label>Aba da Planilha</Label>
-              <Select value={selectedSheet} onValueChange={setSelectedSheet}>
+              <Select value={selectedSheet} onValueChange={setSelectedSheet} disabled={isPending}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione uma aba" />
                 </SelectTrigger>
@@ -569,7 +594,12 @@ export function FileImportModal({
         )}
 
         {step === 3 && (
-          <div className="flex-1 mt-4">
+          <div className="flex-1 mt-4 relative">
+            {isPending && (
+              <div className="absolute inset-0 bg-background/50 z-20 flex items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            )}
             <ImportPreviewTable
               preview={preview}
               onCategoryChange={handleCategoryChange}
@@ -579,27 +609,65 @@ export function FileImportModal({
           </div>
         )}
 
+        {step === 4 && summary && (
+          <div className="flex flex-col items-center justify-center py-10 gap-4 animate-in fade-in zoom-in duration-300">
+            <CheckCircle2 className="h-16 w-16 text-green-500" />
+            <h3 className="text-xl font-semibold">Importação Concluída!</h3>
+            <div className="flex flex-col gap-3 mt-4 bg-muted/30 p-6 rounded-lg w-full max-w-sm">
+              <div className="flex justify-between items-center border-b border-border/50 pb-2">
+                <span className="text-muted-foreground">Total de Registros</span>
+                <span className="font-bold text-lg">{summary.total}</span>
+              </div>
+              <div className="flex justify-between items-center border-b border-border/50 pb-2">
+                <span className="text-muted-foreground">Total de Débitos</span>
+                <span className="font-bold text-destructive">{summary.debits}</span>
+              </div>
+              <div className="flex justify-between items-center pb-1">
+                <span className="text-muted-foreground">Total de Créditos</span>
+                <span className="font-bold text-green-600 dark:text-green-500">
+                  {summary.credits}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="flex justify-between mt-4">
-          <Button
-            variant="outline"
-            onClick={
-              step === 1
-                ? handleClose
-                : step === 3 && workbook && workbook.SheetNames.length > 1
-                  ? () => setStep(2)
-                  : () => setStep(1)
-            }
-          >
-            {step === 1 ? 'Cancelar' : 'Voltar'}
-          </Button>
+          {step !== 4 && (
+            <Button
+              variant="outline"
+              disabled={isPending}
+              onClick={
+                step === 1
+                  ? handleClose
+                  : step === 3 && workbook && workbook.SheetNames.length > 1
+                    ? () => setStep(2)
+                    : () => setStep(1)
+              }
+            >
+              {step === 1 ? 'Cancelar' : 'Voltar'}
+            </Button>
+          )}
+
           {step === 2 && (
-            <Button onClick={() => processSheet(workbook!, selectedSheet)} className="gap-2">
+            <Button
+              onClick={() => processSheet(workbook!, selectedSheet)}
+              disabled={isPending}
+              className="gap-2"
+            >
               Avançar <ArrowRight className="h-4 w-4" />
             </Button>
           )}
+
           {step === 3 && (
-            <Button onClick={handleImport} className="gap-2">
+            <Button onClick={handleImport} disabled={isPending} className="gap-2">
               <CheckCircle2 className="h-4 w-4" /> Confirmar Importação
+            </Button>
+          )}
+
+          {step === 4 && (
+            <Button onClick={handleClose} className="w-full">
+              Fechar Janela
             </Button>
           )}
         </div>
