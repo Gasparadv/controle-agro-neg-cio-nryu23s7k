@@ -54,6 +54,13 @@ export const parseDate = (d: string | number | Date | undefined | null): string 
   let str = String(d).trim()
   if (!str || typeof str !== 'string') return ''
 
+  // Handle Excel serial dates (numbers as strings)
+  if (/^\d{4,5}$/.test(str)) {
+    const excelEpoch = new Date(Date.UTC(1899, 11, 30))
+    excelEpoch.setDate(excelEpoch.getDate() + parseInt(str, 10))
+    return excelEpoch.toISOString().split('T')[0]
+  }
+
   if (str.match(/^\d{1,2}[-.]\d{1,2}[-.]\d{2,4}$/)) {
     str = str.replace(/[-.]/g, '/')
   }
@@ -61,12 +68,29 @@ export const parseDate = (d: string | number | Date | undefined | null): string 
   if (str.includes('/')) {
     const p = str.split('/')
     if (p.length === 3) {
-      if (p[2].length === 4) return `${p[2]}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}`
-      if (p[0].length === 4) return `${p[0]}-${p[1].padStart(2, '0')}-${p[2].padStart(2, '0')}`
-      if (p[2].length === 2) {
-        const year = parseInt(p[2], 10)
-        const fullYear = year < 50 ? `20${p[2].padStart(2, '0')}` : `19${p[2].padStart(2, '0')}`
-        return `${fullYear}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}`
+      let day = p[0]
+      let month = p[1]
+      let year = p[2]
+
+      if (year.length === 4) {
+        if (parseInt(month, 10) > 12 && parseInt(day, 10) <= 12) {
+          // Identify MM/DD/YYYY and correctly swap
+          const temp = month
+          month = day
+          day = temp
+        }
+        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+      }
+      if (p[0].length === 4) {
+        year = p[0]
+        month = p[1]
+        day = p[2]
+        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+      }
+      if (year.length === 2) {
+        const y = parseInt(year, 10)
+        const fullYear = y < 50 ? `20${year.padStart(2, '0')}` : `19${year.padStart(2, '0')}`
+        return `${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
       }
     }
   }

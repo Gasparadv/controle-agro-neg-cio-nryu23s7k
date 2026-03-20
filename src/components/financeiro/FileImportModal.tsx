@@ -57,6 +57,7 @@ export function FileImportModal({
     creditsAmount: number
   } | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [isImporting, setIsImporting] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -538,9 +539,7 @@ export function FileImportModal({
     }
   }
 
-  const handleImport = () => {
-    const batchId = `batch-${Date.now()}`
-
+  const handleImport = async () => {
     const validToImport = preview.filter((r) => !r.isDuplicate && !r.isInvalid)
     const duplicatesCount = preview.filter((r) => r.isDuplicate).length
     const errorsCount = preview.filter((r) => r.isInvalid).length
@@ -563,6 +562,12 @@ export function FileImportModal({
       handleClose()
       return
     }
+
+    setIsImporting(true)
+    // Simulate processing time for UI feedback
+    await new Promise((r) => setTimeout(r, 1000))
+
+    const batchId = `batch-${Date.now()}`
 
     const txs: Transaction[] = validToImport.map((r, i) => {
       let finalAmt = Math.abs(r.amount)
@@ -592,6 +597,7 @@ export function FileImportModal({
       date: new Date().toISOString(),
       fileName,
       recordCount: txs.length,
+      transactions: txs,
     })
 
     const debitsTxs = txs.filter((t) => t.type === 'despesa')
@@ -612,6 +618,7 @@ export function FileImportModal({
       debitsAmount,
       creditsAmount,
     })
+    setIsImporting(false)
     setStep(4)
   }
 
@@ -622,6 +629,7 @@ export function FileImportModal({
     setSelectedSheet('')
     setPreview([])
     setSummary(null)
+    setIsImporting(false)
     if (fileInputRef.current) fileInputRef.current.value = ''
     onOpenChange(false)
   }
@@ -730,7 +738,7 @@ export function FileImportModal({
 
         {step === 3 && (
           <div className="flex-1 mt-4 relative">
-            {isPending && (
+            {(isPending || isImporting) && (
               <div className="absolute inset-0 bg-background/50 z-20 flex items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
@@ -754,7 +762,9 @@ export function FileImportModal({
                 <span className="font-bold text-lg">{summary.total}</span>
               </div>
               <div className="flex justify-between items-center border-b border-border/50 pb-2">
-                <span className="text-muted-foreground font-medium">Registros Importados</span>
+                <span className="text-muted-foreground font-medium">
+                  Registros Integrados com Sucesso
+                </span>
                 <span className="font-bold text-green-600 dark:text-green-500 text-lg">
                   {summary.imported}
                 </span>
@@ -797,7 +807,7 @@ export function FileImportModal({
           {step !== 4 && (
             <Button
               variant="outline"
-              disabled={isPending}
+              disabled={isPending || isImporting}
               onClick={
                 step === 1
                   ? handleClose
@@ -825,8 +835,17 @@ export function FileImportModal({
               <span className="text-xs text-muted-foreground ml-2 hidden sm:block">
                 Linhas identificadas com erros ou já existentes serão ignoradas.
               </span>
-              <Button onClick={handleImport} disabled={isPending} className="gap-2 ml-auto">
-                <CheckCircle2 className="h-4 w-4" /> Confirmar Importação
+              <Button
+                onClick={handleImport}
+                disabled={isPending || isImporting}
+                className="gap-2 ml-auto"
+              >
+                {isImporting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4" />
+                )}
+                {isImporting ? 'Processando Lote...' : 'Confirmar Importação'}
               </Button>
             </div>
           )}

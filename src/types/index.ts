@@ -19,6 +19,7 @@ export interface ImportBatch {
   date: string
   fileName: string
   recordCount: number
+  transactions?: Transaction[]
 }
 
 export interface Transaction {
