@@ -20,7 +20,8 @@ import {
 import { useToast } from '@/hooks/use-toast'
 import useAgroStore from '@/stores/useAgroStore'
 import useAuthStore from '@/stores/useAuthStore'
-import { Transaction, TransactionType } from '@/types'
+import { Transaction, TransactionType, CropType } from '@/types'
+import { formatBRL } from '@/lib/format'
 import {
   parseAmount,
   parseDate,
@@ -49,54 +50,66 @@ export function FileImportModal({
     debits: number
     credits: number
     undefined: number
+    debitsAmount: number
+    creditsAmount: number
   } | null>(null)
   const [isPending, startTransition] = useTransition()
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const { transactions, addTransactions, addImportBatch } = useAgroStore()
+  const { transactions, addTransactions, addImportBatch, mappingRules } = useAgroStore()
   const { role, userName } = useAuthStore()
   const { toast } = useToast()
 
-  const categorizeDesc = (desc: string) => {
-    if (!desc || typeof desc !== 'string') return 'Outros'
-    const d = desc.toLowerCase()
+  const categorizeDescWithRules = (desc: string) => {
+    let cat = 'Outros'
+    let crop: CropType | 'Geral' = 'Geral'
+    let type: TransactionType | '' = ''
 
-    if (d && typeof d === 'string') {
-      if (d.includes('posto') || d.includes('combustível') || d.includes('diesel'))
-        return 'Combustível'
-      if (
-        d.includes('oficina') ||
-        d.includes('trator') ||
-        d.includes('manutenção') ||
-        d.includes('peça')
-      )
-        return 'Manutenção'
-      if (
-        d.includes('semente') ||
-        d.includes('fertilizante') ||
-        d.includes('adubo') ||
-        d.includes('defensivo') ||
-        d.includes('npk')
-      )
-        return 'Insumos'
-      if (
-        d.includes('salário') ||
-        d.includes('pagamento') ||
-        d.includes('diária') ||
-        d.includes('mão de obra')
-      )
-        return 'Mão de Obra'
-      if (
-        d.includes('venda') ||
-        d.includes('recebimento') ||
-        d.includes('safra') ||
-        d.includes('soja') ||
-        d.includes('milho')
-      )
-        return 'Venda'
+    if (!desc || typeof desc !== 'string') return { cat, crop, type }
+
+    const d = desc.toLowerCase()
+    if (d.includes('posto') || d.includes('combustível') || d.includes('diesel'))
+      cat = 'Combustível'
+    else if (
+      d.includes('oficina') ||
+      d.includes('trator') ||
+      d.includes('manutenção') ||
+      d.includes('peça')
+    )
+      cat = 'Manutenção'
+    else if (
+      d.includes('semente') ||
+      d.includes('fertilizante') ||
+      d.includes('adubo') ||
+      d.includes('defensivo') ||
+      d.includes('npk')
+    )
+      cat = 'Insumos'
+    else if (
+      d.includes('salário') ||
+      d.includes('pagamento') ||
+      d.includes('diária') ||
+      d.includes('mão de obra')
+    )
+      cat = 'Mão de Obra'
+    else if (
+      d.includes('venda') ||
+      d.includes('recebimento') ||
+      d.includes('safra') ||
+      d.includes('soja') ||
+      d.includes('milho')
+    )
+      cat = 'Venda'
+
+    for (const rule of mappingRules) {
+      if (d.includes(rule.keyword.toLowerCase())) {
+        if (rule.category) cat = rule.category
+        if (rule.crop) crop = rule.crop
+        if (rule.type) type = rule.type
+      }
     }
-    return 'Outros'
+    return { cat, crop, type }
   }
 
   const validateAndPreviewOfx = (data: any[]) => {
@@ -142,9 +155,12 @@ export function FileImportModal({
           errorMsg = 'Valor inválido'
         }
 
-        const detectedType = parsedAmt < 0 ? 'despesa' : 'receita'
         const desc = item.desc || 'Transação OFX'
-        const cat = categorizeDesc(desc)
+        const mapped = categorizeDescWithRules(desc)
+        const detectedType = mapped.type || (parsedAmt < 0 ? 'despesa' : 'receita')
+        const cat = mapped.cat
+        const crop = mapped.crop
+
         const descLower = typeof desc === 'string' ? desc.toLowerCase() : ''
 
         const isDup =
@@ -158,7 +174,7 @@ export function FileImportModal({
           desc,
           amount: parsedAmt,
           cat,
-          crop: 'Geral',
+          crop,
           comments: '',
           type: detectedType,
           isDuplicate: isDup,
@@ -338,8 +354,10 @@ export function FileImportModal({
           errorMsg = 'Valor inválido'
         }
 
-        let detectedType: TransactionType | '' = ''
+        const desc = String(rawDesc || '').trim()
+        const mapped = categorizeDescWithRules(desc)
 
+        let detectedType: TransactionType | '' = ''
         const debitMarkers = ['D', 'DEBITO', 'DÉBITO', 'DEBIT', 'DESPESA', 'SAÍDA', 'SAIDA', '-']
         const creditMarkers = ['C', 'CREDITO', 'CRÉDITO', 'CREDIT', 'RECEITA', 'ENTRADA', '+']
 
@@ -368,19 +386,20 @@ export function FileImportModal({
 
             if (hasDebitMarker) detectedType = 'despesa'
             else if (hasCreditMarker) detectedType = 'receita'
-            else detectedType = 'indefinido'
+            else detectedType = mapped.type || 'indefinido'
           }
         }
 
-        const desc = String(rawDesc || '').trim()
-        const cat = rawCat ? String(rawCat).trim() : categorizeDesc(desc)
+        const cat = rawCat ? String(rawCat).trim() : mapped.cat
 
-        const vCrop = String(rawCrop || '').toLowerCase()
-        let crop: 'Soja' | 'Milho' | 'Cana' | 'Geral' = 'Geral'
-        if (vCrop && typeof vCrop === 'string') {
+        let vCrop = String(rawCrop || '').toLowerCase()
+        let crop = 'Geral'
+        if (vCrop && typeof vCrop === 'string' && vCrop.trim() !== '') {
           if (vCrop.includes('soja')) crop = 'Soja'
           else if (vCrop.includes('milho')) crop = 'Milho'
           else if (vCrop.includes('cana')) crop = 'Cana'
+        } else {
+          crop = mapped.crop
         }
 
         const descLower = typeof desc === 'string' ? desc.toLowerCase() : ''
@@ -558,10 +577,21 @@ export function FileImportModal({
       recordCount: txs.length,
     })
 
-    const debits = txs.filter((t) => t.type === 'despesa').length
-    const credits = txs.filter((t) => t.type === 'receita').length
+    const debitsTxs = txs.filter((t) => t.type === 'despesa')
+    const creditsTxs = txs.filter((t) => t.type === 'receita')
     const undef = txs.filter((t) => t.type === 'indefinido').length
-    setSummary({ total: txs.length, debits, credits, undefined: undef })
+
+    const debitsAmount = debitsTxs.reduce((sum, t) => sum + Math.abs(t.amount), 0)
+    const creditsAmount = creditsTxs.reduce((sum, t) => sum + Math.abs(t.amount), 0)
+
+    setSummary({
+      total: txs.length,
+      debits: debitsTxs.length,
+      credits: creditsTxs.length,
+      undefined: undef,
+      debitsAmount,
+      creditsAmount,
+    })
     setStep(4)
   }
 
@@ -700,13 +730,15 @@ export function FileImportModal({
                 <span className="font-bold text-lg">{summary.total}</span>
               </div>
               <div className="flex justify-between items-center border-b border-border/50 pb-2">
-                <span className="text-muted-foreground">Total de Débitos</span>
-                <span className="font-bold text-destructive">{summary.debits}</span>
+                <span className="text-muted-foreground">Débitos ({summary.debits})</span>
+                <span className="font-bold text-destructive">
+                  {formatBRL(summary.debitsAmount)}
+                </span>
               </div>
               <div className="flex justify-between items-center border-b border-border/50 pb-2">
-                <span className="text-muted-foreground">Total de Créditos</span>
+                <span className="text-muted-foreground">Créditos ({summary.credits})</span>
                 <span className="font-bold text-green-600 dark:text-green-500">
-                  {summary.credits}
+                  {formatBRL(summary.creditsAmount)}
                 </span>
               </div>
               {summary.undefined > 0 && (

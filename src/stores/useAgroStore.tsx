@@ -1,9 +1,10 @@
 import React, { createContext, useContext, useState } from 'react'
-import { Transaction, ImportBatch } from '@/types'
+import { Transaction, ImportBatch, MappingRule } from '@/types'
 
 interface AgroStoreContextType {
   transactions: Transaction[]
   importBatches: ImportBatch[]
+  mappingRules: MappingRule[]
   addTransaction: (tx: Transaction) => void
   addTransactions: (txs: Transaction[]) => void
   updateTransaction: (tx: Transaction) => void
@@ -12,6 +13,11 @@ interface AgroStoreContextType {
   rejectTransaction: (id: string, reason: string) => void
   addImportBatch: (batch: ImportBatch) => void
   undoImportBatch: (batchId: string) => void
+  addMappingRule: (rule: MappingRule) => void
+  deleteMappingRule: (id: string) => void
+  applyMappingRules: () => void
+  bulkUpdateTransactions: (ids: string[], updates: Partial<Transaction>) => void
+  bulkDeleteTransactions: (ids: string[]) => void
 }
 
 const initialImportBatches: ImportBatch[] = [
@@ -21,6 +27,11 @@ const initialImportBatches: ImportBatch[] = [
     fileName: 'extrato_bradesco_abr.csv',
     recordCount: 2,
   },
+]
+
+const initialMappingRules: MappingRule[] = [
+  { id: 'r1', keyword: 'fertilizante', category: 'Insumos', type: 'despesa' },
+  { id: 'r2', keyword: 'cargill', category: 'Venda', type: 'receita', crop: 'Soja' },
 ]
 
 const initialTransactions: Transaction[] = [
@@ -158,6 +169,7 @@ const AgroStoreContext = createContext<AgroStoreContextType | undefined>(undefin
 export function AgroProvider({ children }: { children: React.ReactNode }) {
   const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions)
   const [importBatches, setImportBatches] = useState<ImportBatch[]>(initialImportBatches)
+  const [mappingRules, setMappingRules] = useState<MappingRule[]>(initialMappingRules)
 
   const addTransaction = (tx: Transaction) => {
     setTransactions((prev) => [tx, ...prev])
@@ -200,11 +212,58 @@ export function AgroProvider({ children }: { children: React.ReactNode }) {
     setImportBatches((prev) => prev.filter((b) => b.id !== batchId))
   }
 
+  const addMappingRule = (rule: MappingRule) => setMappingRules((prev) => [...prev, rule])
+  const deleteMappingRule = (id: string) =>
+    setMappingRules((prev) => prev.filter((r) => r.id !== id))
+
+  const applyMappingRules = () => {
+    setTransactions((prev) =>
+      prev.map((tx) => {
+        if (tx.type !== 'indefinido' && tx.category !== 'Outros') return tx
+
+        let newTx = { ...tx }
+        const desc = tx.description.toLowerCase()
+
+        for (const rule of mappingRules) {
+          if (desc.includes(rule.keyword.toLowerCase())) {
+            if (rule.category && tx.category === 'Outros') newTx.category = rule.category
+            if (rule.crop && tx.crop === 'Geral') newTx.crop = rule.crop
+            if (rule.type && tx.type === 'indefinido') {
+              newTx.type = rule.type
+              newTx.amount =
+                rule.type === 'despesa' ? -Math.abs(newTx.amount) : Math.abs(newTx.amount)
+            }
+          }
+        }
+        return newTx
+      }),
+    )
+  }
+
+  const bulkUpdateTransactions = (ids: string[], updates: Partial<Transaction>) => {
+    setTransactions((prev) =>
+      prev.map((tx) => {
+        if (!ids.includes(tx.id)) return tx
+        const newTx = { ...tx, ...updates }
+        if (updates.type) {
+          newTx.amount =
+            updates.type === 'despesa' ? -Math.abs(newTx.amount) : Math.abs(newTx.amount)
+        }
+        return newTx
+      }),
+    )
+  }
+
+  const bulkDeleteTransactions = (ids: string[]) => {
+    setTransactions((prev) => prev.filter((tx) => !ids.includes(tx.id)))
+  }
+
   return (
     <AgroStoreContext.Provider
       value={{
         transactions,
         importBatches,
+        mappingRules,
         addTransaction,
         addTransactions,
         updateTransaction,
@@ -213,6 +272,11 @@ export function AgroProvider({ children }: { children: React.ReactNode }) {
         rejectTransaction,
         addImportBatch,
         undoImportBatch,
+        addMappingRule,
+        deleteMappingRule,
+        applyMappingRules,
+        bulkUpdateTransactions,
+        bulkDeleteTransactions,
       }}
     >
       {children}

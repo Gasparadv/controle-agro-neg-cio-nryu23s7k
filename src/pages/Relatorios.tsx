@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { ExpensePieChart } from '@/components/relatorios/ExpensePieChart'
 import { RevenueChart } from '@/components/relatorios/RevenueChart'
 import { AccountantReportModal } from '@/components/relatorios/AccountantReportModal'
+import { CropInvestmentChart } from '@/components/relatorios/CropInvestmentChart'
 
 export default function Relatorios() {
   const [isAccountantModalOpen, setIsAccountantModalOpen] = useState(false)
@@ -30,6 +31,10 @@ export default function Relatorios() {
         <div className="lg:col-span-2">
           <RevenueChart />
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <CropInvestmentChart />
       </div>
 
       {/* Spacer to simulate more content down the page if needed */}

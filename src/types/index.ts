@@ -37,6 +37,14 @@ export interface Transaction {
   fitid?: string
 }
 
+export interface MappingRule {
+  id: string
+  keyword: string
+  category?: string
+  crop?: CropType
+  type?: TransactionType
+}
+
 export type InventoryType = 'Semente' | 'Fertilizante' | 'Defensivo' | 'Outros'
 
 export type InventoryUnit = 'kg' | 'sc' | 'L' | 'un'
