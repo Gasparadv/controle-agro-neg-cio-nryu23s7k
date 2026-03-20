@@ -60,3 +60,34 @@ export const parseCsvFile = (content: string): string[][] => {
     .split('\n')
     .map((r) => r.split(delimiter).map((c) => c.trim().replace(/^"|"$/g, '')))
 }
+
+export const parseOfxFile = (content: string): any[] => {
+  const transactions: any[] = []
+
+  const blocks = content.split(/<STMTTRN>/i).slice(1)
+
+  for (const block of blocks) {
+    const trnamtMatch = block.match(/<TRNAMT>([^<\r\n]+)/i)
+    const dtpostedMatch = block.match(/<DTPOSTED>([^<\r\n]+)/i)
+    const nameMatch = block.match(/<NAME>([^<\r\n]+)/i)
+    const memoMatch = block.match(/<MEMO>([^<\r\n]+)/i)
+    const fitidMatch = block.match(/<FITID>([^<\r\n]+)/i)
+
+    if (trnamtMatch && dtpostedMatch) {
+      const rawAmt = trnamtMatch[1].trim()
+      const rawDate = dtpostedMatch[1].trim()
+      const name = nameMatch ? nameMatch[1].trim() : ''
+      const memo = memoMatch ? memoMatch[1].trim() : ''
+      const fitid = fitidMatch ? fitidMatch[1].trim() : ''
+
+      transactions.push({
+        rawAmt,
+        rawDate,
+        desc: name || memo || 'Transação OFX',
+        fitid,
+      })
+    }
+  }
+
+  return transactions
+}

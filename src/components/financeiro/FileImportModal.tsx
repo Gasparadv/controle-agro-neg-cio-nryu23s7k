@@ -21,7 +21,14 @@ import { useToast } from '@/hooks/use-toast'
 import useAgroStore from '@/stores/useAgroStore'
 import useAuthStore from '@/stores/useAuthStore'
 import { Transaction } from '@/types'
-import { parseAmount, parseDate, readExcelFile, getSheetData, parseCsvFile } from '@/lib/parser'
+import {
+  parseAmount,
+  parseDate,
+  readExcelFile,
+  getSheetData,
+  parseCsvFile,
+  parseOfxFile,
+} from '@/lib/parser'
 import * as XLSX from 'xlsx'
 import { ImportPreviewTable, PreviewRow } from './ImportPreviewTable'
 
@@ -43,6 +50,108 @@ export function FileImportModal({
   const { transactions, addTransactions, addImportBatch } = useAgroStore()
   const { role, userName } = useAuthStore()
   const { toast } = useToast()
+
+  const categorizeDesc = (desc: string) => {
+    const d = desc.toLowerCase()
+    if (d.includes('posto') || d.includes('combustível') || d.includes('diesel'))
+      return 'Combustível'
+    if (
+      d.includes('oficina') ||
+      d.includes('trator') ||
+      d.includes('manutenção') ||
+      d.includes('peça')
+    )
+      return 'Manutenção'
+    if (
+      d.includes('semente') ||
+      d.includes('fertilizante') ||
+      d.includes('adubo') ||
+      d.includes('defensivo') ||
+      d.includes('npk')
+    )
+      return 'Insumos'
+    if (
+      d.includes('salário') ||
+      d.includes('pagamento') ||
+      d.includes('diária') ||
+      d.includes('mão de obra')
+    )
+      return 'Mão de Obra'
+    if (
+      d.includes('venda') ||
+      d.includes('recebimento') ||
+      d.includes('safra') ||
+      d.includes('soja') ||
+      d.includes('milho')
+    )
+      return 'Venda'
+    return 'Outros'
+  }
+
+  const validateAndPreviewOfx = (data: any[]) => {
+    const p: PreviewRow[] = []
+
+    for (let i = 0; i < data.length; i++) {
+      const item = data[i]
+
+      const dateMatch = item.rawDate.match(/^(\d{4})(\d{2})(\d{2})/)
+      let dateStr = ''
+      let isDateValid = false
+      if (dateMatch) {
+        dateStr = `${dateMatch[1]}-${dateMatch[2]}-${dateMatch[3]}`
+        isDateValid = true
+      }
+
+      const parsedAmt = parseFloat(item.rawAmt)
+      const isAmtValid = !isNaN(parsedAmt)
+
+      let isInvalid = false
+      let errorMsg = ''
+
+      if (!isDateValid && !isAmtValid) {
+        isInvalid = true
+        errorMsg = 'Data e Valor inválidos'
+      } else if (!isDateValid) {
+        isInvalid = true
+        errorMsg = 'Data inválida'
+      } else if (!isAmtValid) {
+        isInvalid = true
+        errorMsg = 'Valor inválido'
+      }
+
+      const detectedType = parsedAmt < 0 ? 'despesa' : 'receita'
+      const desc = item.desc || 'Transação OFX'
+      const cat = categorizeDesc(desc)
+
+      const isDup =
+        !isInvalid &&
+        transactions.some(
+          (tx) =>
+            (item.fitid && tx.fitid === item.fitid) ||
+            (tx.date === dateStr &&
+              tx.amount === Math.abs(parsedAmt) &&
+              tx.type === detectedType &&
+              tx.description === desc),
+        )
+
+      p.push({
+        index: i,
+        date: isDateValid ? dateStr : String(item.rawDate || 'Vazio'),
+        desc,
+        amount: parsedAmt,
+        cat,
+        type: detectedType,
+        isDuplicate: isDup,
+        isInvalid,
+        errorMsg,
+        rawAmt: String(item.rawAmt || ''),
+        fitid: item.fitid,
+      })
+    }
+
+    setPreview(p)
+    setStep(3)
+  }
 
   const validateAndPreview = (data: string[][]) => {
     const p: PreviewRow[] = []
@@ -111,44 +220,7 @@ export function FileImportModal({
       }
 
       const desc = String(rawDesc).trim()
-      let cat = ''
-
-      const d = desc.toLowerCase()
-      if (d.includes('posto') || d.includes('combustível') || d.includes('diesel')) {
-        cat = 'Combustível'
-      } else if (
-        d.includes('oficina') ||
-        d.includes('trator') ||
-        d.includes('manutenção') ||
-        d.includes('peça')
-      ) {
-        cat = 'Manutenção'
-      } else if (
-        d.includes('semente') ||
-        d.includes('fertilizante') ||
-        d.includes('adubo') ||
-        d.includes('defensivo') ||
-        d.includes('npk')
-      ) {
-        cat = 'Insumos'
-      } else if (
-        d.includes('salário') ||
-        d.includes('pagamento') ||
-        d.includes('diária') ||
-        d.includes('mão de obra')
-      ) {
-        cat = 'Mão de Obra'
-      } else if (
-        d.includes('venda') ||
-        d.includes('recebimento') ||
-        d.includes('safra') ||
-        d.includes('soja') ||
-        d.includes('milho')
-      ) {
-        cat = 'Venda'
-      } else {
-        cat = 'Outros'
-      }
+      const cat = categorizeDesc(desc)
 
       const isDup =
         !isInvalid &&
@@ -194,7 +266,9 @@ export function FileImportModal({
     if (!file) return
     setFileName(file.name)
 
-    if (file.name.toLowerCase().endsWith('.csv')) {
+    const lowerName = file.name.toLowerCase()
+
+    if (lowerName.endsWith('.csv')) {
       const reader = new FileReader()
       reader.onload = (ev) => {
         const rows = parseCsvFile(ev.target?.result as string)
@@ -202,7 +276,21 @@ export function FileImportModal({
         else toast({ variant: 'destructive', title: 'Erro', description: 'CSV vazio ou inválido.' })
       }
       reader.readAsText(file)
-    } else if (file.name.match(/\.(xlsx|xls)$/i)) {
+    } else if (lowerName.endsWith('.ofx')) {
+      const reader = new FileReader()
+      reader.onload = (ev) => {
+        const content = ev.target?.result as string
+        const ofxData = parseOfxFile(content)
+        if (ofxData.length > 0) validateAndPreviewOfx(ofxData)
+        else
+          toast({
+            variant: 'destructive',
+            title: 'Erro',
+            description: 'Arquivo OFX vazio ou inválido. Nenhuma transação (STMTTRN) encontrada.',
+          })
+      }
+      reader.readAsText(file)
+    } else if (lowerName.match(/\.(xlsx|xls)$/i)) {
       try {
         const wb = await readExcelFile(file)
         if (!wb.SheetNames.length) throw new Error('Empty')
@@ -276,6 +364,7 @@ export function FileImportModal({
         status: isCollab ? 'pending' : 'approved',
         collaboratorName: isCollab ? userName : undefined,
         importBatchId: batchId,
+        fitid: r.fitid,
       }
     })
 
@@ -317,10 +406,11 @@ export function FileImportModal({
       if (!r.isInvalid) {
         r.isDuplicate = transactions.some(
           (tx) =>
-            tx.date === r.date &&
-            tx.amount === Math.abs(r.amount) &&
-            tx.type === r.type &&
-            tx.description === r.desc,
+            (r.fitid && tx.fitid === r.fitid) ||
+            (tx.date === r.date &&
+              tx.amount === Math.abs(r.amount) &&
+              tx.type === r.type &&
+              tx.description === r.desc),
         )
       }
       return copy
@@ -331,9 +421,9 @@ export function FileImportModal({
     <Dialog open={open} onOpenChange={(val) => !val && handleClose()}>
       <DialogContent className="sm:max-w-[750px] overflow-hidden flex flex-col max-h-[90vh]">
         <DialogHeader>
-          <DialogTitle>Importar Extrato (CSV / Excel)</DialogTitle>
+          <DialogTitle>Importar Extrato (OFX / CSV / Excel)</DialogTitle>
           <DialogDescription>
-            {step === 1 && 'Faça o upload do seu arquivo de extrato (.csv, .xlsx, .xls).'}
+            {step === 1 && 'Faça o upload do seu arquivo de extrato (.ofx, .csv, .xlsx, .xls).'}
             {step === 2 && 'O arquivo possui múltiplas abas. Selecione qual deseja importar.'}
             {step === 3 &&
               'Pré-visualização dos dados importados. Você pode alterar o tipo e as categorias antes de confirmar.'}
@@ -353,11 +443,13 @@ export function FileImportModal({
               id="file-upload"
               ref={fileInputRef}
               type="file"
-              accept=".csv, .xlsx, .xls"
+              accept=".csv, .xlsx, .xls, .ofx"
               className="hidden"
               onChange={handleFile}
             />
-            <p className="text-xs text-muted-foreground">Formatos suportados: CSV, XLSX, XLS</p>
+            <p className="text-xs text-muted-foreground">
+              Formatos suportados: OFX, CSV, XLSX, XLS
+            </p>
           </div>
         )}
 

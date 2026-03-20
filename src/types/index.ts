@@ -34,6 +34,7 @@ export interface Transaction {
   rejectionReason?: string
   collaboratorName?: string
   importBatchId?: string
+  fitid?: string
 }
 
 export type InventoryType = 'Semente' | 'Fertilizante' | 'Defensivo' | 'Outros'

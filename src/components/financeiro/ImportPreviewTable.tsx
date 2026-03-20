@@ -30,6 +30,7 @@ export interface PreviewRow {
   isInvalid?: boolean
   errorMsg?: string
   rawAmt?: string
+  fitid?: string
 }
 
 interface ImportPreviewTableProps {
@@ -51,7 +52,7 @@ export function ImportPreviewTable({
   return (
     <div className="rounded-md border overflow-hidden flex flex-col h-[400px]">
       <div className="bg-muted p-3 text-xs text-muted-foreground border-b flex items-center justify-between font-medium">
-        <span>Mapeamento: Col A (Data), Col C (Descrição), Col E (Valor), Col F (D/C).</span>
+        <span>Pré-visualização dos dados de importação.</span>
         <div className="flex gap-4">
           {missingTypeCount > 0 && (
             <span className="text-destructive font-semibold">
