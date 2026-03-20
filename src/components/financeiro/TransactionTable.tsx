@@ -20,7 +20,18 @@ import {
 } from '@/components/ui/select'
 import { formatBRL, formatDate } from '@/lib/format'
 import { Transaction } from '@/types'
-import { Clock, CheckCircle2, XCircle, AlertCircle, Trash2, Edit2, Tractor } from 'lucide-react'
+import {
+  Clock,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  Trash2,
+  Edit2,
+  Tractor,
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import useEquipmentStore from '@/stores/useEquipmentStore'
 
@@ -34,6 +45,8 @@ interface TransactionTableProps {
   onSelectAll?: (checked: boolean) => void
   onSelectRow?: (id: string, checked: boolean) => void
   readOnly?: boolean
+  sortOrder?: 'asc' | 'desc'
+  onSortDate?: () => void
 }
 
 export function TransactionTable({
@@ -46,6 +59,8 @@ export function TransactionTable({
   onSelectAll,
   onSelectRow,
   readOnly = false,
+  sortOrder,
+  onSortDate,
 }: TransactionTableProps) {
   const { equipments } = useEquipmentStore()
 
@@ -120,7 +135,26 @@ export function TransactionTable({
                 <Checkbox checked={allSelected} onCheckedChange={(c) => onSelectAll(c === true)} />
               )}
             </TableHead>
-            <TableHead className="w-[100px]">Data</TableHead>
+            <TableHead
+              className={cn(
+                'w-[120px]',
+                onSortDate && 'cursor-pointer hover:bg-muted/80 transition-colors',
+              )}
+              onClick={onSortDate}
+              title="Ordenar por Data"
+            >
+              <div className="flex items-center gap-1.5 select-none">
+                Data
+                {onSortDate &&
+                  (sortOrder === 'desc' ? (
+                    <ArrowDown className="h-3 w-3 text-muted-foreground" />
+                  ) : sortOrder === 'asc' ? (
+                    <ArrowUp className="h-3 w-3 text-muted-foreground" />
+                  ) : (
+                    <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
+                  ))}
+              </div>
+            </TableHead>
             <TableHead>Descrição</TableHead>
             <TableHead>Categoria / Status</TableHead>
             <TableHead className="hidden lg:table-cell">Equipamento</TableHead>

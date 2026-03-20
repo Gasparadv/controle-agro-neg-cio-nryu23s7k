@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { formatBRL } from '@/lib/format'
+import { formatBRL, formatDate } from '@/lib/format'
 
 export interface PreviewRow {
   index: number
@@ -80,7 +80,7 @@ export function ImportPreviewTable({
                     {row.isInvalid ? (
                       <span className="text-destructive font-medium">{row.date}</span>
                     ) : (
-                      row.date
+                      formatDate(row.date)
                     )}
                   </TableCell>
                   <TableCell

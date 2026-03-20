@@ -179,6 +179,10 @@ export function ImportHistoryModal({ open, onOpenChange }: ImportHistoryModalPro
     }
   }
 
+  const sortedBatches = [...importBatches].sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+  )
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[800px]">
@@ -201,14 +205,14 @@ export function ImportHistoryModal({ open, onOpenChange }: ImportHistoryModalPro
               </TableRow>
             </TableHeader>
             <TableBody>
-              {importBatches.map((batch) => {
+              {sortedBatches.map((batch) => {
                 const status = getStatus(batch)
                 const canSync = status === 'pending' || status === 'partial'
 
                 return (
                   <TableRow key={batch.id}>
                     <TableCell className="font-medium whitespace-nowrap text-xs">
-                      {formatDate(batch.date.split('T')[0])}
+                      {formatDate(batch.date)}
                       <span className="text-muted-foreground ml-1">
                         {batch.date.split('T')[1]?.substring(0, 5)}
                       </span>
@@ -278,7 +282,7 @@ export function ImportHistoryModal({ open, onOpenChange }: ImportHistoryModalPro
                   </TableRow>
                 )
               })}
-              {importBatches.length === 0 && (
+              {sortedBatches.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center h-24 text-muted-foreground">
                     Nenhuma importação encontrada.

@@ -65,6 +65,7 @@ export default function Financeiro() {
 
   const [filterCrop, setFilterCrop] = useState<string>('Todos')
   const [filterType, setFilterType] = useState<string>('Todos')
+  const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc')
   const [currentPage, setCurrentPage] = useState<number>(1)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
 
@@ -79,7 +80,7 @@ export default function Financeiro() {
   useEffect(() => {
     setCurrentPage(1)
     setSelectedIds([])
-  }, [filterCrop, filterType])
+  }, [filterCrop, filterType, sortOrder])
 
   const filteredTransactions = transactions.filter((t) => {
     const matchCrop = filterCrop === 'Todos' || t.crop === filterCrop
@@ -95,7 +96,9 @@ export default function Financeiro() {
   filteredTransactions.sort((a, b) => {
     if (a.type === 'indefinido' && b.type !== 'indefinido') return -1
     if (a.type !== 'indefinido' && b.type === 'indefinido') return 1
-    return new Date(b.date).getTime() - new Date(a.date).getTime()
+    const dateA = new Date(a.date).getTime()
+    const dateB = new Date(b.date).getTime()
+    return sortOrder === 'desc' ? dateB - dateA : dateA - dateB
   })
 
   const totalPages = Math.ceil(filteredTransactions.length / ITEMS_PER_PAGE) || 1
@@ -140,6 +143,10 @@ export default function Financeiro() {
   const handleSelectRow = (id: string, checked: boolean) => {
     if (checked) setSelectedIds((prev) => [...prev, id])
     else setSelectedIds((prev) => prev.filter((i) => i !== id))
+  }
+
+  const handleSortDate = () => {
+    setSortOrder((prev) => (prev === 'desc' ? 'asc' : 'desc'))
   }
 
   const renderPaginationItems = () => {
@@ -300,6 +307,8 @@ export default function Financeiro() {
           onSelectAll={handleSelectAll}
           onSelectRow={handleSelectRow}
           readOnly={isViewer}
+          sortOrder={sortOrder}
+          onSortDate={handleSortDate}
         />
 
         {totalPages > 1 && (
