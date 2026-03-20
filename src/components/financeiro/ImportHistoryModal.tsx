@@ -38,7 +38,8 @@ interface ImportHistoryModalProps {
 }
 
 export function ImportHistoryModal({ open, onOpenChange }: ImportHistoryModalProps) {
-  const { importBatches, transactions, undoImportBatch, addTransactions } = useAgroStore()
+  const { importBatches, transactions, undoImportBatch, addTransactions, bulkUpdateTransactions } =
+    useAgroStore()
   const { toast } = useToast()
   const [batchToUndo, setBatchToUndo] = useState<string | null>(null)
   const [syncingId, setSyncingId] = useState<string | null>(null)
@@ -65,43 +66,11 @@ export function ImportHistoryModal({ open, onOpenChange }: ImportHistoryModalPro
   }
 
   const getStatus = (batch: ImportBatch) => {
-    if (!batch.transactions || batch.transactions.length === 0) {
-      const batchTxs = transactions.filter((t) => t.importBatchId === batch.id)
-      if (batchTxs.length === 0) return 'pending'
-      if (batchTxs.length < batch.recordCount) return 'partial'
-      return 'completed'
-    }
-
-    const existingMap = new Set(
-      transactions.map(
-        (t) => `${t.date}|${Math.abs(t.amount)}|${t.type}|${(t.description || '').toLowerCase()}`,
-      ),
-    )
-    const existingIds = new Set(transactions.map((t) => t.id))
+    const batchTxs = transactions.filter((t) => t.importBatchId === batch.id)
+    const pendingCount = batchTxs.filter((t) => t.status === 'pending').length
 
     let missingCount = 0
-    for (const t of batch.transactions) {
-      const key = `${t.date}|${Math.abs(t.amount)}|${t.type}|${(t.description || '').toLowerCase()}`
-      if (!existingIds.has(t.id) && !existingMap.has(key)) {
-        missingCount++
-      }
-    }
-
-    if (missingCount === batch.transactions.length) return 'pending'
-    if (missingCount > 0) return 'partial'
-    return 'completed'
-  }
-
-  const handleSync = async (batch: ImportBatch) => {
-    setSyncingId(batch.id)
-
-    try {
-      if (!batch.transactions || batch.transactions.length === 0) {
-        throw new Error(
-          'Não há dados salvos neste lote para sincronizar. Formato de dados inválido.',
-        )
-      }
-
+    if (batch.transactions && batch.transactions.length > 0) {
       const existingMap = new Set(
         transactions.map(
           (t) => `${t.date}|${Math.abs(t.amount)}|${t.type}|${(t.description || '').toLowerCase()}`,
@@ -109,24 +78,95 @@ export function ImportHistoryModal({ open, onOpenChange }: ImportHistoryModalPro
       )
       const existingIds = new Set(transactions.map((t) => t.id))
 
-      const missingTxs = batch.transactions.filter((t) => {
+      for (const t of batch.transactions) {
         const key = `${t.date}|${Math.abs(t.amount)}|${t.type}|${(t.description || '').toLowerCase()}`
-        return !existingIds.has(t.id) && !existingMap.has(key)
-      })
+        if (!existingIds.has(t.id) && !existingMap.has(key)) {
+          missingCount++
+        }
+      }
+    }
 
+    const hasMissingOrPending = missingCount > 0 || pendingCount > 0
+
+    if (!hasMissingOrPending) {
+      if (batchTxs.length === 0 && (!batch.transactions || batch.transactions.length === 0)) {
+        return 'pending'
+      }
+      if (
+        batchTxs.length > 0 &&
+        batchTxs.length < batch.recordCount &&
+        (!batch.transactions || batch.transactions.length === 0)
+      ) {
+        return 'partial'
+      }
+      return 'completed'
+    }
+
+    const totalProcessed =
+      (batch.transactions?.length || batch.recordCount) - missingCount - pendingCount
+    const approvedCount = batchTxs.filter((t) => t.status === 'approved').length
+
+    if (totalProcessed > 0 || approvedCount > 0) return 'partial'
+
+    return 'pending'
+  }
+
+  const handleSync = async (batch: ImportBatch) => {
+    setSyncingId(batch.id)
+
+    try {
       await new Promise((resolve) => setTimeout(resolve, 800))
 
-      if (missingTxs.length > 0) {
-        await addTransactions(missingTxs)
+      let syncedCount = 0
+
+      if (batch.transactions && batch.transactions.length > 0) {
+        const existingMap = new Set(
+          transactions.map(
+            (t) =>
+              `${t.date}|${Math.abs(t.amount)}|${t.type}|${(t.description || '').toLowerCase()}`,
+          ),
+        )
+        const existingIds = new Set(transactions.map((t) => t.id))
+
+        const missingTxs = batch.transactions.filter((t) => {
+          const key = `${t.date}|${Math.abs(t.amount)}|${t.type}|${(t.description || '').toLowerCase()}`
+          return !existingIds.has(t.id) && !existingMap.has(key)
+        })
+
+        if (missingTxs.length > 0) {
+          const toAdd = missingTxs.map((t) => ({ ...t, status: 'approved' as const }))
+          await addTransactions(toAdd)
+          syncedCount += missingTxs.length
+        }
+      }
+
+      const pendingTxs = transactions.filter(
+        (t) => t.importBatchId === batch.id && t.status === 'pending',
+      )
+      if (pendingTxs.length > 0) {
+        const ids = pendingTxs.map((t) => t.id)
+        await bulkUpdateTransactions(ids, { status: 'approved' })
+        syncedCount += pendingTxs.length
+      }
+
+      if (syncedCount > 0) {
         toast({
           title: 'Sincronização Concluída',
-          description: `${missingTxs.length} registros foram integrados com sucesso.`,
+          description: `${syncedCount} registros foram integrados com sucesso.`,
         })
       } else {
-        toast({
-          title: 'Nenhum registro pendente',
-          description: 'Todos os registros válidos deste lote já estão integrados.',
-        })
+        if (!batch.transactions || batch.transactions.length === 0) {
+          toast({
+            variant: 'destructive',
+            title: 'Erro de Sincronização',
+            description: 'Não há dados salvos neste lote para sincronizar.',
+          })
+        } else {
+          toast({
+            title: 'Nenhum registro pendente',
+            description: 'Todos os registros válidos deste lote já estão integrados.',
+          })
+        }
       }
     } catch (err: any) {
       toast({
@@ -163,8 +203,7 @@ export function ImportHistoryModal({ open, onOpenChange }: ImportHistoryModalPro
             <TableBody>
               {importBatches.map((batch) => {
                 const status = getStatus(batch)
-                const canSync =
-                  status !== 'completed' && batch.transactions && batch.transactions.length > 0
+                const canSync = status === 'pending' || status === 'partial'
 
                 return (
                   <TableRow key={batch.id}>
@@ -212,16 +251,14 @@ export function ImportHistoryModal({ open, onOpenChange }: ImportHistoryModalPro
                           size="sm"
                           onClick={() => handleSync(batch)}
                           disabled={syncingId === batch.id}
-                          className="h-7 gap-1.5 text-[10px] text-blue-600 border-blue-200 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-900 px-2"
+                          className="h-7 gap-1.5 text-[10px] text-blue-600 border-blue-200 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-900 px-2 flex whitespace-nowrap"
                         >
                           {syncingId === batch.id ? (
                             <Loader2 className="h-3 w-3 animate-spin" />
                           ) : (
                             <RefreshCw className="h-3 w-3" />
                           )}
-                          <span className="hidden sm:inline">
-                            {syncingId === batch.id ? 'Sincronizando...' : 'Sincronizar'}
-                          </span>
+                          <span>{syncingId === batch.id ? 'Sincronizando...' : 'Sincronizar'}</span>
                         </Button>
                       ) : (
                         <div className="h-7 px-2"></div>
