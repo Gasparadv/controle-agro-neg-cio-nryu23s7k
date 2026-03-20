@@ -48,7 +48,9 @@ export function TransactionTable({
   const { equipments } = useEquipmentStore()
 
   const [editId, setEditId] = useState<string | null>(null)
-  const [editField, setEditField] = useState<'category' | 'crop' | 'comments' | null>(null)
+  const [editField, setEditField] = useState<
+    'category' | 'crop' | 'comments' | 'equipmentId' | null
+  >(null)
   const [editValue, setEditValue] = useState('')
 
   const getStatusBadge = (status?: string) => {
@@ -81,7 +83,7 @@ export function TransactionTable({
   const startEdit = (
     e: React.MouseEvent,
     tx: Transaction,
-    field: 'category' | 'crop' | 'comments',
+    field: 'category' | 'crop' | 'comments' | 'equipmentId',
   ) => {
     e.stopPropagation()
     setEditId(tx.id)
@@ -89,8 +91,8 @@ export function TransactionTable({
     setEditValue(tx[field] || '')
   }
 
-  const saveEdit = (tx: Transaction, newValue: string) => {
-    if (onUpdate && tx[editField!] !== newValue) {
+  const saveEdit = (tx: Transaction, newValue: string | undefined) => {
+    if (onUpdate && tx[editField as keyof Transaction] !== newValue) {
       onUpdate(tx, { [editField!]: newValue })
     }
     setEditId(null)
@@ -217,12 +219,49 @@ export function TransactionTable({
                   </div>
                 </TableCell>
                 <TableCell className="hidden lg:table-cell text-muted-foreground text-xs">
-                  {eqName ? (
-                    <div className="flex items-center gap-1.5 bg-muted/50 px-2 py-1 rounded w-fit">
-                      <Tractor className="h-3 w-3" /> {eqName}
+                  {editId === tx.id && editField === 'equipmentId' ? (
+                    <div onClick={(e) => e.stopPropagation()} className="w-[150px]">
+                      <Select
+                        defaultOpen
+                        value={editValue || 'none'}
+                        onValueChange={(v) => saveEdit(tx, v === 'none' ? undefined : v)}
+                        onOpenChange={(o) => {
+                          if (!o) {
+                            setEditId(null)
+                            setEditField(null)
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="h-7 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Nenhum</SelectItem>
+                          {equipments.map((eq) => (
+                            <SelectItem key={eq.id} value={eq.id}>
+                              {eq.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   ) : (
-                    '-'
+                    <div
+                      className="group flex items-center gap-1 cursor-pointer"
+                      onClick={(e) => startEdit(e, tx, 'equipmentId')}
+                    >
+                      {eqName ? (
+                        <div className="flex items-center gap-1.5 bg-muted/50 px-2 py-1 rounded w-fit">
+                          <Tractor className="h-3 w-3" />{' '}
+                          <span className="truncate max-w-[120px]" title={eqName}>
+                            {eqName}
+                          </span>
+                        </div>
+                      ) : (
+                        <span>-</span>
+                      )}
+                      <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-100 text-muted-foreground print:hidden" />
+                    </div>
                   )}
                 </TableCell>
                 <TableCell>

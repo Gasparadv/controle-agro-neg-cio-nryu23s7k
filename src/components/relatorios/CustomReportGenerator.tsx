@@ -1,8 +1,9 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
 import {
   Select,
   SelectContent,
@@ -18,6 +19,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination'
 import { Download, Printer, Filter } from 'lucide-react'
 import useAgroStore from '@/stores/useAgroStore'
 import useEquipmentStore from '@/stores/useEquipmentStore'
@@ -33,13 +41,18 @@ export function CustomReportGenerator() {
   const [equipmentFilter, setEquipmentFilter] = useState('all')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [typeFilter, setTypeFilter] = useState('all')
+  const [currentPage, setCurrentPage] = useState(1)
+
+  const ITEMS_PER_PAGE = 50
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [dateFrom, dateTo, equipmentFilter, categoryFilter, typeFilter])
 
   const filteredData = useMemo(() => {
     return transactions
       .filter((t) => {
-        // Keep approved and historically relevant txs
         if (t.status === 'rejected') return false
-
         if (dateFrom && t.date < dateFrom) return false
         if (dateTo && t.date > dateTo) return false
         if (equipmentFilter !== 'all') {
@@ -53,6 +66,12 @@ export function CustomReportGenerator() {
       })
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
   }, [transactions, dateFrom, dateTo, equipmentFilter, categoryFilter, typeFilter])
+
+  const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE) || 1
+  const paginatedData = filteredData.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE,
+  )
 
   const totalDebits = filteredData
     .filter((t) => t.type === 'despesa')
@@ -90,6 +109,7 @@ export function CustomReportGenerator() {
               position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 20px; background: white; color: black; z-index: 99999;
             }
             .print-hide { display: none !important; }
+            .print-break-inside-avoid { break-inside: avoid; }
           }
         `}
       </style>
@@ -176,7 +196,7 @@ export function CustomReportGenerator() {
               </p>
             </div>
 
-            <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-3 gap-4 mb-6 print-break-inside-avoid">
               <div className="bg-muted/30 p-4 rounded-lg border flex flex-col justify-center items-center text-center">
                 <span className="text-sm text-muted-foreground">Total Entradas</span>
                 <span className="text-lg font-bold text-green-600">{formatBRL(totalCredits)}</span>
@@ -214,9 +234,9 @@ export function CustomReportGenerator() {
               </div>
             </div>
 
-            <div className="border rounded-md max-h-[400px] overflow-y-auto print:max-h-none print:overflow-visible">
+            <div className="border rounded-md max-h-[500px] overflow-y-auto print-hide">
               <Table>
-                <TableHeader className="bg-muted/50 sticky top-0 z-10 print:static">
+                <TableHeader className="bg-muted/50 sticky top-0 z-10">
                   <TableRow>
                     <TableHead>Data</TableHead>
                     <TableHead>Descrição</TableHead>
@@ -226,13 +246,13 @@ export function CustomReportGenerator() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredData.map((t) => {
+                  {paginatedData.map((t) => {
                     const eq = t.equipmentId
                       ? equipments.find((e) => e.id === t.equipmentId)?.name ||
                         'Equipamento Removido'
                       : '-'
                     return (
-                      <TableRow key={t.id} className="print:break-inside-avoid">
+                      <TableRow key={t.id}>
                         <TableCell className="whitespace-nowrap">{formatDate(t.date)}</TableCell>
                         <TableCell className="font-medium">{t.description}</TableCell>
                         <TableCell className="text-muted-foreground text-xs">{eq}</TableCell>
@@ -249,7 +269,7 @@ export function CustomReportGenerator() {
                       </TableRow>
                     )
                   })}
-                  {filteredData.length === 0 && (
+                  {paginatedData.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={5} className="text-center h-24 text-muted-foreground">
                         Nenhum registro encontrado para os filtros selecionados.
@@ -258,6 +278,81 @@ export function CustomReportGenerator() {
                   )}
                 </TableBody>
               </Table>
+            </div>
+
+            {totalPages > 1 && (
+              <div className="mt-4 print-hide">
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                        className={
+                          currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'
+                        }
+                      />
+                    </PaginationItem>
+                    <PaginationItem>
+                      <span className="text-sm text-muted-foreground px-4">
+                        Página {currentPage} de {totalPages}
+                      </span>
+                    </PaginationItem>
+                    <PaginationItem>
+                      <PaginationNext
+                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                        className={
+                          currentPage === totalPages
+                            ? 'pointer-events-none opacity-50'
+                            : 'cursor-pointer'
+                        }
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            )}
+
+            <div className="hidden print:block border rounded-md">
+              <Table>
+                <TableHeader className="bg-gray-100">
+                  <TableRow>
+                    <TableHead>Data</TableHead>
+                    <TableHead>Descrição</TableHead>
+                    <TableHead>Equipamento</TableHead>
+                    <TableHead>Categoria</TableHead>
+                    <TableHead className="text-right">Valor</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredData.slice(0, 1000).map((t) => {
+                    const eq = t.equipmentId
+                      ? equipments.find((e) => e.id === t.equipmentId)?.name ||
+                        'Equipamento Removido'
+                      : '-'
+                    return (
+                      <TableRow key={t.id} className="print-break-inside-avoid">
+                        <TableCell className="whitespace-nowrap py-1">
+                          {formatDate(t.date)}
+                        </TableCell>
+                        <TableCell className="font-medium py-1">{t.description}</TableCell>
+                        <TableCell className="text-gray-500 text-xs py-1">{eq}</TableCell>
+                        <TableCell className="py-1">{t.category}</TableCell>
+                        <TableCell
+                          className={`text-right font-medium whitespace-nowrap py-1 ${t.type === 'despesa' ? 'text-red-700' : 'text-green-700'}`}
+                        >
+                          {t.type === 'despesa' ? '-' : '+'} {formatBRL(Math.abs(t.amount))}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+              {filteredData.length > 1000 && (
+                <div className="text-center text-sm text-gray-500 py-4 font-bold border-t">
+                  * Este relatório PDF foi limitado aos primeiros 1000 registros para evitar
+                  travamentos. Exporte em formato CSV para obter a listagem completa.
+                </div>
+              )}
             </div>
           </div>
         </CardContent>

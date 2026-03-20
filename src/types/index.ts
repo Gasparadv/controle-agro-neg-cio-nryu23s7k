@@ -97,12 +97,17 @@ export interface FarmPlot {
 
 export type EquipmentType = 'Máquina' | 'Veículo' | 'Implemento'
 
+export type EquipmentStatus = 'ativo' | 'inativo' | 'manutencao' | 'vendido'
+
 export interface Equipment {
   id: string
   name: string
   type: EquipmentType
   identifier: string
   brand: string
+  model?: string
+  year?: number
+  status?: EquipmentStatus
   acquisitionDate: string
   acquisitionValue: number
   saleDate?: string

@@ -8,6 +8,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Trash2, X } from 'lucide-react'
 import { Transaction, TransactionType, CropType } from '@/types'
+import useEquipmentStore from '@/stores/useEquipmentStore'
 
 interface BulkActionsBarProps {
   selectedCount: number
@@ -22,14 +23,18 @@ export function BulkActionsBar({
   onDelete,
   onCancel,
 }: BulkActionsBarProps) {
-  return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-background/95 backdrop-blur border shadow-2xl rounded-full px-6 py-3 flex items-center gap-4 z-50 animate-in slide-in-from-bottom-10 print:hidden">
-      <span className="text-sm font-medium whitespace-nowrap">{selectedCount} selecionados</span>
+  const { equipments } = useEquipmentStore()
 
-      <div className="h-6 w-px bg-border mx-2" />
+  return (
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-background/95 backdrop-blur border shadow-2xl rounded-full px-6 py-3 flex items-center gap-4 z-50 animate-in slide-in-from-bottom-10 print:hidden overflow-x-auto max-w-[95vw]">
+      <span className="text-sm font-medium whitespace-nowrap shrink-0">
+        {selectedCount} selecionados
+      </span>
+
+      <div className="h-6 w-px bg-border mx-2 shrink-0" />
 
       <Select onValueChange={(val: TransactionType) => onUpdate({ type: val })}>
-        <SelectTrigger className="w-[120px] h-8 text-xs bg-muted border-none">
+        <SelectTrigger className="w-[120px] h-8 text-xs bg-muted border-none shrink-0">
           <SelectValue placeholder="Definir Tipo" />
         </SelectTrigger>
         <SelectContent>
@@ -39,7 +44,7 @@ export function BulkActionsBar({
       </Select>
 
       <Select onValueChange={(val) => onUpdate({ category: val })}>
-        <SelectTrigger className="w-[150px] h-8 text-xs bg-muted border-none">
+        <SelectTrigger className="w-[150px] h-8 text-xs bg-muted border-none shrink-0">
           <SelectValue placeholder="Definir Categoria" />
         </SelectTrigger>
         <SelectContent>
@@ -55,7 +60,7 @@ export function BulkActionsBar({
       </Select>
 
       <Select onValueChange={(val: CropType) => onUpdate({ crop: val })}>
-        <SelectTrigger className="w-[130px] h-8 text-xs bg-muted border-none">
+        <SelectTrigger className="w-[130px] h-8 text-xs bg-muted border-none shrink-0">
           <SelectValue placeholder="Definir Cultura" />
         </SelectTrigger>
         <SelectContent>
@@ -66,18 +71,37 @@ export function BulkActionsBar({
         </SelectContent>
       </Select>
 
-      <div className="h-6 w-px bg-border mx-2" />
+      <Select onValueChange={(val) => onUpdate({ equipmentId: val === 'none' ? undefined : val })}>
+        <SelectTrigger className="w-[140px] h-8 text-xs bg-muted border-none shrink-0">
+          <SelectValue placeholder="Definir Equip." />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="none">Nenhum</SelectItem>
+          {equipments.map((eq) => (
+            <SelectItem key={eq.id} value={eq.id}>
+              {eq.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      <div className="h-6 w-px bg-border mx-2 shrink-0" />
 
       <Button
         size="icon"
         variant="ghost"
-        className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+        className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive shrink-0"
         onClick={onDelete}
       >
         <Trash2 className="h-4 w-4" />
       </Button>
 
-      <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full" onClick={onCancel}>
+      <Button
+        size="icon"
+        variant="ghost"
+        className="h-8 w-8 rounded-full shrink-0"
+        onClick={onCancel}
+      >
         <X className="h-4 w-4" />
       </Button>
     </div>

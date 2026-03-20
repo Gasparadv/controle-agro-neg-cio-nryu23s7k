@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Equipment, EquipmentType } from '@/types'
+import { Equipment, EquipmentType, EquipmentStatus } from '@/types'
 import useEquipmentStore from '@/stores/useEquipmentStore'
 import { useToast } from '@/hooks/use-toast'
 
@@ -31,6 +31,9 @@ const initialFormState: Partial<Equipment> = {
   type: 'Máquina',
   identifier: '',
   brand: '',
+  model: '',
+  year: new Date().getFullYear(),
+  status: 'ativo',
   acquisitionDate: '',
   acquisitionValue: 0,
   saleDate: '',
@@ -67,6 +70,9 @@ export function EquipmentModal({ open, onOpenChange, equipmentToEdit }: Equipmen
       type: formData.type as EquipmentType,
       identifier: formData.identifier,
       brand: formData.brand || '',
+      model: formData.model || '',
+      year: formData.year ? Number(formData.year) : undefined,
+      status: formData.status || 'ativo',
       acquisitionDate: formData.acquisitionDate,
       acquisitionValue: Number(formData.acquisitionValue) || 0,
       saleDate: formData.saleDate || undefined,
@@ -86,7 +92,7 @@ export function EquipmentModal({ open, onOpenChange, equipmentToEdit }: Equipmen
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[550px]">
         <DialogHeader>
           <DialogTitle>
             {equipmentToEdit ? 'Editar Equipamento' : 'Registrar Novo Equipamento'}
@@ -95,7 +101,7 @@ export function EquipmentModal({ open, onOpenChange, equipmentToEdit }: Equipmen
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2 col-span-2 sm:col-span-1">
-              <Label>Nome / Modelo</Label>
+              <Label>Nome / Apelido</Label>
               <Input
                 placeholder="Ex: Trator MF 4292"
                 value={formData.name || ''}
@@ -130,11 +136,48 @@ export function EquipmentModal({ open, onOpenChange, equipmentToEdit }: Equipmen
               />
             </div>
             <div className="space-y-2">
+              <Label>Status</Label>
+              <Select
+                value={formData.status}
+                onValueChange={(val: EquipmentStatus) => setFormData({ ...formData, status: val })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ativo">Ativo</SelectItem>
+                  <SelectItem value="inativo">Inativo</SelectItem>
+                  <SelectItem value="manutencao">Em Manutenção</SelectItem>
+                  <SelectItem value="vendido">Vendido</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div className="space-y-2">
               <Label>Marca</Label>
               <Input
                 placeholder="Ex: Massey Ferguson"
                 value={formData.brand || ''}
                 onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Modelo</Label>
+              <Input
+                placeholder="Ex: 4292"
+                value={formData.model || ''}
+                onChange={(e) => setFormData({ ...formData, model: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Ano</Label>
+              <Input
+                type="number"
+                placeholder="Ex: 2020"
+                value={formData.year || ''}
+                onChange={(e) => setFormData({ ...formData, year: Number(e.target.value) })}
               />
             </div>
           </div>
