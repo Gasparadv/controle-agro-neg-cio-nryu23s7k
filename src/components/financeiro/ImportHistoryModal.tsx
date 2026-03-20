@@ -181,7 +181,7 @@ export function ImportHistoryModal({ open, onOpenChange }: ImportHistoryModalPro
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[750px]">
+      <DialogContent className="sm:max-w-[800px]">
         <DialogHeader>
           <DialogTitle>Histórico de Importações</DialogTitle>
           <DialogDescription>
@@ -189,7 +189,7 @@ export function ImportHistoryModal({ open, onOpenChange }: ImportHistoryModalPro
           </DialogDescription>
         </DialogHeader>
 
-        <div className="rounded-md border mt-4 overflow-hidden">
+        <div className="rounded-md border mt-4 bg-background">
           <Table>
             <TableHeader className="bg-muted/50">
               <TableRow>
@@ -197,7 +197,7 @@ export function ImportHistoryModal({ open, onOpenChange }: ImportHistoryModalPro
                 <TableHead className="min-w-[150px]">Arquivo</TableHead>
                 <TableHead className="w-[80px] text-center">Registros</TableHead>
                 <TableHead className="w-[140px]">Status</TableHead>
-                <TableHead className="text-right w-[150px]">Ações</TableHead>
+                <TableHead className="text-right w-[180px]">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -244,34 +244,36 @@ export function ImportHistoryModal({ open, onOpenChange }: ImportHistoryModalPro
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell className="text-right flex items-center justify-end gap-1">
-                      {canSync ? (
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        {canSync && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleSync(batch)}
+                            disabled={syncingId === batch.id}
+                            className="h-8 gap-1.5 text-xs text-blue-600 border-blue-200 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-900 px-3 flex whitespace-nowrap"
+                          >
+                            {syncingId === batch.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <RefreshCw className="h-3.5 w-3.5" />
+                            )}
+                            <span>
+                              {syncingId === batch.id ? 'Sincronizando...' : 'Sincronizar'}
+                            </span>
+                          </Button>
+                        )}
                         <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleSync(batch)}
-                          disabled={syncingId === batch.id}
-                          className="h-7 gap-1.5 text-[10px] text-blue-600 border-blue-200 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-900 px-2 flex whitespace-nowrap"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setBatchToUndo(batch.id)}
+                          className="text-destructive hover:bg-destructive/10 hover:text-destructive h-8 w-8 ml-1"
+                          title="Desfazer Importação"
                         >
-                          {syncingId === batch.id ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                          ) : (
-                            <RefreshCw className="h-3 w-3" />
-                          )}
-                          <span>{syncingId === batch.id ? 'Sincronizando...' : 'Sincronizar'}</span>
+                          <Trash2 className="h-4 w-4" />
                         </Button>
-                      ) : (
-                        <div className="h-7 px-2"></div>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setBatchToUndo(batch.id)}
-                        className="text-destructive hover:bg-destructive/10 hover:text-destructive h-7 w-7"
-                        title="Desfazer Importação"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 )

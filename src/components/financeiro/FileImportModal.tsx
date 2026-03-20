@@ -548,7 +548,7 @@ export function FileImportModal({
       toast({
         variant: 'destructive',
         title: 'Atenção',
-        description: 'Ocorreu um problema ao identificar o tipo de alguns registros.',
+        description: 'Ocorreu um problema ao identifying o tipo de alguns registros.',
       })
       return
     }
@@ -584,7 +584,7 @@ export function FileImportModal({
         category: r.cat || 'Outros',
         comments: r.comments || `Arquivo: ${fileName}`,
         crop: (r.crop as any) || 'Geral',
-        status: 'approved',
+        status: 'pending',
         collaboratorName: undefined,
         importBatchId: batchId,
         fitid: r.fitid,
@@ -763,7 +763,7 @@ export function FileImportModal({
               </div>
               <div className="flex justify-between items-center border-b border-border/50 pb-2">
                 <span className="text-muted-foreground font-medium">
-                  Registros Integrados com Sucesso
+                  Registros Pendentes Criados
                 </span>
                 <span className="font-bold text-green-600 dark:text-green-500 text-lg">
                   {summary.imported}
@@ -800,6 +800,11 @@ export function FileImportModal({
                 </div>
               )}
             </div>
+            <p className="text-xs text-muted-foreground mt-4 text-center">
+              Os registros foram adicionados com status "Pendente".
+              <br />
+              Vá em <strong>Histórico</strong> para revisá-los e realizar a sincronização final.
+            </p>
           </div>
         )}
 
