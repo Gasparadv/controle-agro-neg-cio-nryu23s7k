@@ -33,6 +33,7 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
+  Paperclip,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import useEquipmentStore from '@/stores/useEquipmentStore'
@@ -49,6 +50,7 @@ interface TransactionTableProps {
   readOnly?: boolean
   sortOrder?: 'asc' | 'desc'
   onSortDate?: () => void
+  onViewAttachment?: (tx: Transaction) => void
 }
 
 export function TransactionTable({
@@ -63,6 +65,7 @@ export function TransactionTable({
   readOnly = false,
   sortOrder,
   onSortDate,
+  onViewAttachment,
 }: TransactionTableProps) {
   const { equipments } = useEquipmentStore()
 
@@ -169,6 +172,7 @@ export function TransactionTable({
             <TableHead>Cultura</TableHead>
             <TableHead className="text-right">Valor / Tipo</TableHead>
             <TableHead className="text-center w-[100px]">Conciliação</TableHead>
+            <TableHead className="w-[60px] text-center">Anexo</TableHead>
             <TableHead className="hidden md:table-cell max-w-[200px]">Comentários</TableHead>
             <TableHead className={cn('w-[50px] print:hidden', readOnly && 'hidden')}></TableHead>
           </TableRow>
@@ -428,6 +432,25 @@ export function TransactionTable({
                     {isReconciled ? 'Conciliado' : 'Pendente'}
                   </span>
                 </TableCell>
+                <TableCell className="text-center">
+                  {tx.attachment ? (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 print:hidden"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onViewAttachment?.(tx)
+                      }}
+                      title="Ver Comprovante"
+                    >
+                      <Paperclip className="h-4 w-4" />
+                    </Button>
+                  ) : (
+                    <span className="text-muted-foreground/30 print:hidden">-</span>
+                  )}
+                  {tx.attachment && <span className="hidden print:inline text-xs">Sim</span>}
+                </TableCell>
                 <TableCell className="hidden md:table-cell text-muted-foreground max-w-[200px]">
                   {editId === tx.id && editField === 'comments' && !readOnly ? (
                     <div
@@ -480,7 +503,7 @@ export function TransactionTable({
           })}
           {transactions.length === 0 && (
             <TableRow>
-              <TableCell colSpan={10} className="h-24 text-center text-muted-foreground">
+              <TableCell colSpan={11} className="h-24 text-center text-muted-foreground">
                 {emptyStateMessage || 'Nenhum lançamento encontrado.'}
               </TableCell>
             </TableRow>

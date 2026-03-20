@@ -12,6 +12,7 @@ export const exportToCSV = (transactions: Transaction[], equipments: Equipment[]
     'Valor',
     'Conciliação',
     'Status',
+    'Anexo',
     'Comentários',
   ]
   const rows = transactions.map((t) => {
@@ -30,6 +31,7 @@ export const exportToCSV = (transactions: Transaction[], equipments: Equipment[]
       t.amount.toString(),
       `"${conciliacao}"`,
       t.status || '',
+      t.attachment ? 'Sim' : 'Não',
       `"${(t.comments || '').replace(/"/g, '""')}"`,
     ]
   })

@@ -35,6 +35,7 @@ import { ImportHistoryModal } from '@/components/financeiro/ImportHistoryModal'
 import { QuickAddModal } from '@/components/financeiro/QuickAddModal'
 import { BulkActionsBar } from '@/components/financeiro/BulkActionsBar'
 import { MappingRulesModal } from '@/components/financeiro/MappingRulesModal'
+import { DocumentViewerModal } from '@/components/financeiro/DocumentViewerModal'
 import { DatePickerWithRange } from '@/components/ui/date-range-picker'
 import useAgroStore from '@/stores/useAgroStore'
 import useAuthStore from '@/stores/useAuthStore'
@@ -73,6 +74,9 @@ export default function Financeiro() {
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false)
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false)
   const [isMappingModalOpen, setIsMappingModalOpen] = useState(false)
+
+  const [documentViewerTx, setDocumentViewerTx] = useState<Transaction | null>(null)
+  const [isDocumentViewerOpen, setIsDocumentViewerOpen] = useState(false)
 
   useEffect(() => {
     setCurrentPage(1)
@@ -162,6 +166,11 @@ export default function Financeiro() {
 
   const handleSortDate = () => {
     setSortOrder((prev) => (prev === 'desc' ? 'asc' : 'desc'))
+  }
+
+  const handleViewAttachment = (tx: Transaction) => {
+    setDocumentViewerTx(tx)
+    setIsDocumentViewerOpen(true)
   }
 
   const renderPaginationItems = () => {
@@ -337,6 +346,7 @@ export default function Financeiro() {
           readOnly={isViewer}
           sortOrder={sortOrder}
           onSortDate={handleSortDate}
+          onViewAttachment={handleViewAttachment}
         />
 
         {totalPages > 1 && (
@@ -391,6 +401,12 @@ export default function Financeiro() {
           open={isSheetOpen}
           onOpenChange={setIsSheetOpen}
           onSave={updateTransaction}
+        />
+
+        <DocumentViewerModal
+          tx={documentViewerTx}
+          open={isDocumentViewerOpen}
+          onOpenChange={setIsDocumentViewerOpen}
         />
 
         <FileImportModal open={isImportModalOpen} onOpenChange={setIsImportModalOpen} />

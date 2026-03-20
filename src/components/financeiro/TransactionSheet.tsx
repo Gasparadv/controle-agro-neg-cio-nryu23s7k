@@ -21,6 +21,7 @@ import {
 import { Transaction } from '@/types'
 import { useToast } from '@/hooks/use-toast'
 import useEquipmentStore from '@/stores/useEquipmentStore'
+import { AttachmentUpload } from './AttachmentUpload'
 
 interface TransactionSheetProps {
   transaction: Transaction | null
@@ -157,6 +158,20 @@ export function TransactionSheet({
               </SelectContent>
             </Select>
           </div>
+
+          <AttachmentUpload
+            attachment={formData.attachment}
+            attachmentName={formData.attachmentName}
+            attachmentType={formData.attachmentType}
+            onChange={(att, name, type) =>
+              setFormData({
+                ...formData,
+                attachment: att,
+                attachmentName: name,
+                attachmentType: type,
+              })
+            }
+          />
 
           <div className="space-y-2">
             <Label>Comentários</Label>

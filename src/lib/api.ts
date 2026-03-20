@@ -12,6 +12,9 @@ export const fallbackData: Record<string, any[]> = {
       comments: 'Para o talhão 1',
       crop: 'Soja',
       status: 'approved',
+      attachment: 'https://img.usecurling.com/p/600/800?q=receipt',
+      attachmentName: 'nf_sementes_001.jpg',
+      attachmentType: 'image/jpeg',
     },
     {
       id: '2',
@@ -34,6 +37,9 @@ export const fallbackData: Record<string, any[]> = {
       comments: 'Cargill',
       crop: 'Soja',
       status: 'approved',
+      attachment: 'https://img.usecurling.com/p/800/1000?q=contract',
+      attachmentName: 'contrato_venda.pdf',
+      attachmentType: 'application/pdf',
     },
     {
       id: '4',

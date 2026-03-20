@@ -23,6 +23,7 @@ import useAuthStore from '@/stores/useAuthStore'
 import useEquipmentStore from '@/stores/useEquipmentStore'
 import { Transaction, TransactionType, CropType } from '@/types'
 import { useToast } from '@/hooks/use-toast'
+import { AttachmentUpload } from './AttachmentUpload'
 
 interface QuickAddModalProps {
   open: boolean
@@ -43,6 +44,10 @@ export function QuickAddModal({ open, onOpenChange }: QuickAddModalProps) {
   const [crop, setCrop] = useState<CropType>('Geral')
   const [equipmentId, setEquipmentId] = useState<string>('none')
   const [comments, setComments] = useState('')
+
+  const [attachment, setAttachment] = useState<string | undefined>()
+  const [attachmentName, setAttachmentName] = useState<string | undefined>()
+  const [attachmentType, setAttachmentType] = useState<string | undefined>()
 
   const handleSave = () => {
     if (!date || !description || !amount) {
@@ -87,6 +92,9 @@ export function QuickAddModal({ open, onOpenChange }: QuickAddModalProps) {
       equipmentId: equipmentId !== 'none' ? equipmentId : undefined,
       comments,
       status: 'approved',
+      attachment,
+      attachmentName,
+      attachmentType,
     }
 
     addTransaction(newTx)
@@ -101,6 +109,9 @@ export function QuickAddModal({ open, onOpenChange }: QuickAddModalProps) {
     setComments('')
     setEquipmentId('none')
     setDate(new Date().toISOString().split('T')[0])
+    setAttachment(undefined)
+    setAttachmentName(undefined)
+    setAttachmentType(undefined)
     onOpenChange(false)
   }
 
@@ -200,6 +211,18 @@ export function QuickAddModal({ open, onOpenChange }: QuickAddModalProps) {
               </Select>
             </div>
           </div>
+
+          <AttachmentUpload
+            attachment={attachment}
+            attachmentName={attachmentName}
+            attachmentType={attachmentType}
+            onChange={(att, name, type) => {
+              setAttachment(att)
+              setAttachmentName(name)
+              setAttachmentType(type)
+            }}
+          />
+
           <div className="space-y-2">
             <Label>Comentários</Label>
             <Textarea

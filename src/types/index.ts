@@ -37,6 +37,9 @@ export interface Transaction {
   importBatchId?: string
   fitid?: string
   equipmentId?: string
+  attachment?: string
+  attachmentName?: string
+  attachmentType?: string
 }
 
 export interface MappingRule {
