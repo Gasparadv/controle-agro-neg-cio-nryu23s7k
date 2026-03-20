@@ -3,7 +3,13 @@ import * as XLSX from 'xlsx'
 export const parseAmount = (val: string | number | undefined | null): number => {
   if (val === undefined || val === null || val === '') return 0
   if (typeof val === 'number') return val
-  let clean = val.toString().replace(/[^0-9.,-]/g, '')
+
+  let strVal = String(val).trim()
+
+  // Check for parenthesis representing negative values e.g. (50.00) -> -50.00
+  const isNegativeParenthesis = /^\(.*\)$/.test(strVal)
+
+  let clean = strVal.replace(/[^0-9.,-]/g, '')
   if (clean.includes(',') && clean.includes('.')) {
     const lastComma = clean.lastIndexOf(',')
     const lastDot = clean.lastIndexOf('.')
@@ -12,7 +18,12 @@ export const parseAmount = (val: string | number | undefined | null): number => 
   } else if (clean.includes(',')) {
     clean = clean.replace(',', '.')
   }
-  return parseFloat(clean) || 0
+
+  let num = parseFloat(clean) || 0
+  if (isNegativeParenthesis) {
+    num = -Math.abs(num)
+  }
+  return num
 }
 
 export const parseDate = (d: string | number | Date | undefined | null): string => {

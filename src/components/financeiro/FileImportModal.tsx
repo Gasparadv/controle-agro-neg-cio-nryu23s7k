@@ -156,23 +156,63 @@ export function FileImportModal({
   const validateAndPreview = (data: string[][]) => {
     const p: PreviewRow[] = []
 
+    let dateIdx = 0
+    let descIdx = 2
+    let amtIdx = 4
+    let typeIdx = 5
+    let headerRowIdx = -1
+
+    // Scan for columns dynamically based on headers
+    for (let i = 0; i < Math.min(5, data.length); i++) {
+      const rowStr = data[i].map((c) => String(c).toLowerCase().trim())
+      if (rowStr.some((c) => c.includes('data') || c.includes('vencimento'))) {
+        const d = rowStr.findIndex((c) => c.includes('data') || c.includes('vencimento'))
+        const de = rowStr.findIndex(
+          (c) => c.includes('descri') || c.includes('histórico') || c.includes('historico'),
+        )
+        const a = rowStr.findIndex(
+          (c) => c.includes('valor') || c.includes('quantia') || c.includes('montante'),
+        )
+        const t = rowStr.findIndex(
+          (c) =>
+            c === 'tipo' || c === 'natureza' || c === 'd/c' || c === 'situação' || c === 'situacao',
+        )
+
+        if (d !== -1) dateIdx = d
+        if (de !== -1) descIdx = de
+        if (a !== -1) amtIdx = a
+        if (t !== -1) typeIdx = t
+
+        headerRowIdx = i
+        break
+      }
+    }
+
     for (let i = 0; i < data.length; i++) {
+      if (i === headerRowIdx) continue
+
       const row = data[i]
       if (!row || !row.some((c) => c && c.trim() !== '')) continue
 
-      const rawDate = row[0]
-      const rawDesc = row[2] || ''
-      const rawAmt = row[4]
-      const rawTypeMarkerF = String(row[5] || '')
-        .trim()
-        .toUpperCase()
+      const rawDate = row[dateIdx]
+      const rawDesc = descIdx !== -1 && descIdx < row.length ? row[descIdx] : ''
+      const rawAmt = amtIdx !== -1 && amtIdx < row.length ? row[amtIdx] : ''
+      const rawTypeMarkerF =
+        typeIdx !== -1 && typeIdx < row.length
+          ? String(row[typeIdx] || '')
+              .trim()
+              .toUpperCase()
+          : ''
 
       if (
         i === 0 &&
+        headerRowIdx === -1 &&
         (String(rawDate).toLowerCase().includes('data') ||
-          String(rawDesc).toLowerCase().includes('descri'))
-      )
+          String(rawDesc).toLowerCase().includes('descri') ||
+          String(rawAmt).toLowerCase().includes('valor'))
+      ) {
         continue
+      }
 
       const dateStr = parseDate(rawDate)
       const isDateValid = /^\d{4}-\d{2}-\d{2}$/.test(dateStr)
@@ -196,27 +236,39 @@ export function FileImportModal({
 
       let detectedType: 'receita' | 'despesa' | '' = ''
 
-      if (['D', 'DEBITO', 'DÉBITO'].includes(rawTypeMarkerF)) {
+      const debitMarkers = ['D', 'DEBITO', 'DÉBITO', 'DEBIT']
+      const creditMarkers = ['C', 'CREDITO', 'CRÉDITO', 'CREDIT']
+
+      if (debitMarkers.includes(rawTypeMarkerF)) {
         detectedType = 'despesa'
-      } else if (['C', 'CREDITO', 'CRÉDITO'].includes(rawTypeMarkerF)) {
+      } else if (creditMarkers.includes(rawTypeMarkerF)) {
         detectedType = 'receita'
-      } else if (parsedAmt < 0) {
-        detectedType = 'despesa'
       } else {
-        const hasDebitMarker = row.some((c) => {
-          const s = String(c || '')
-            .trim()
-            .toUpperCase()
-          return s === 'D' || s === 'DEBITO' || s === 'DÉBITO'
-        })
-        const hasCreditMarker = row.some((c) => {
-          const s = String(c || '')
-            .trim()
-            .toUpperCase()
-          return s === 'C' || s === 'CREDITO' || s === 'CRÉDITO'
-        })
-        if (hasDebitMarker) detectedType = 'despesa'
-        else if (hasCreditMarker) detectedType = 'receita'
+        // Fallback: search across all columns for unambiguous D/C markers
+        const hasDebitMarker = row.some((c) =>
+          debitMarkers.includes(
+            String(c || '')
+              .trim()
+              .toUpperCase(),
+          ),
+        )
+        const hasCreditMarker = row.some((c) =>
+          creditMarkers.includes(
+            String(c || '')
+              .trim()
+              .toUpperCase(),
+          ),
+        )
+
+        if (hasDebitMarker) {
+          detectedType = 'despesa'
+        } else if (hasCreditMarker) {
+          detectedType = 'receita'
+        } else if (parsedAmt < 0) {
+          detectedType = 'despesa'
+        } else if (parsedAmt > 0) {
+          detectedType = 'receita'
+        }
       }
 
       const desc = String(rawDesc).trim()
@@ -425,8 +477,7 @@ export function FileImportModal({
           <DialogDescription>
             {step === 1 && 'Faça o upload do seu arquivo de extrato (.ofx, .csv, .xlsx, .xls).'}
             {step === 2 && 'O arquivo possui múltiplas abas. Selecione qual deseja importar.'}
-            {step === 3 &&
-              'Pré-visualização dos dados importados. Você pode alterar o tipo e as categorias antes de confirmar.'}
+            {step === 3 && 'Confirme as categorizações e salve seus registros.'}
           </DialogDescription>
         </DialogHeader>
 

@@ -48,11 +48,27 @@ export function ImportPreviewTable({
   const missingTypeCount = preview.filter(
     (r) => !r.isDuplicate && !r.isInvalid && r.type === '',
   ).length
+  const debitCount = preview.filter(
+    (r) => r.type === 'despesa' && !r.isInvalid && !r.isDuplicate,
+  ).length
+  const creditCount = preview.filter(
+    (r) => r.type === 'receita' && !r.isInvalid && !r.isDuplicate,
+  ).length
 
   return (
     <div className="rounded-md border overflow-hidden flex flex-col h-[400px]">
-      <div className="bg-muted p-3 text-xs text-muted-foreground border-b flex items-center justify-between font-medium">
-        <span>Pré-visualização dos dados de importação.</span>
+      <div className="bg-muted p-3 text-xs text-muted-foreground border-b flex flex-col sm:flex-row sm:items-center justify-between font-medium gap-3">
+        <div className="flex items-center gap-3">
+          <span>Pré-visualização:</span>
+          <div className="flex gap-2">
+            <Badge variant="outline" className="bg-red-50/50 text-red-700 border-red-200">
+              {debitCount} {debitCount === 1 ? 'Débito' : 'Débitos'}
+            </Badge>
+            <Badge variant="outline" className="bg-green-50/50 text-green-700 border-green-200">
+              {creditCount} {creditCount === 1 ? 'Crédito' : 'Créditos'}
+            </Badge>
+          </div>
+        </div>
         <div className="flex gap-4">
           {missingTypeCount > 0 && (
             <span className="text-destructive font-semibold">
