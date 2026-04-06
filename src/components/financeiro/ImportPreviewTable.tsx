@@ -65,150 +65,161 @@ export function ImportPreviewTable({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {preview.map((row, i) => (
-                <TableRow
-                  key={i}
-                  className={
-                    row.isInvalid
-                      ? 'bg-red-50/50 hover:bg-red-50/80 dark:bg-red-950/20'
-                      : row.isDuplicate
-                        ? 'bg-orange-50/50 hover:bg-orange-50/80 opacity-75 dark:bg-orange-950/20'
-                        : ''
-                  }
-                >
-                  <TableCell className="whitespace-nowrap text-xs">
-                    {row.isInvalid ? (
-                      <span className="text-destructive font-medium">{row.date}</span>
-                    ) : (
-                      formatDate(row.date)
-                    )}
-                  </TableCell>
-                  <TableCell
-                    className="text-xs font-medium max-w-[200px] truncate"
-                    title={row.desc}
+              {[...preview]
+                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                .map((row) => (
+                  <TableRow
+                    key={row.index}
+                    className={
+                      row.isInvalid
+                        ? 'bg-red-50/50 hover:bg-red-50/80 dark:bg-red-950/20'
+                        : row.isDuplicate
+                          ? 'bg-orange-50/50 hover:bg-orange-50/80 opacity-75 dark:bg-orange-950/20'
+                          : ''
+                    }
                   >
-                    {row.desc}
-                  </TableCell>
-                  <TableCell>
-                    {!row.isInvalid && (
-                      <Select value={row.type} onValueChange={(val: any) => onTypeChange(i, val)}>
-                        <SelectTrigger
-                          className={`h-7 text-[10px] w-full ${row.type === 'indefinido' ? 'border-orange-500 ring-orange-500 ring-1' : ''}`}
+                    <TableCell className="whitespace-nowrap text-xs">
+                      {row.isInvalid ? (
+                        <span className="text-destructive font-medium">{row.date}</span>
+                      ) : (
+                        formatDate(row.date)
+                      )}
+                    </TableCell>
+                    <TableCell
+                      className="text-xs font-medium max-w-[200px] truncate"
+                      title={row.desc}
+                    >
+                      {row.desc}
+                    </TableCell>
+                    <TableCell>
+                      {!row.isInvalid && (
+                        <Select
+                          value={row.type}
+                          onValueChange={(val: any) => onTypeChange(row.index, val)}
                         >
-                          <SelectValue placeholder="Tipo" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="despesa">Despesa</SelectItem>
-                          <SelectItem value="receita">Receita</SelectItem>
-                          <SelectItem value="indefinido">Indefinido</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {!row.isInvalid && (
-                      <Select value={row.cat} onValueChange={(val) => onCategoryChange(i, val)}>
-                        <SelectTrigger className="h-7 text-[10px] w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Insumos">Insumos</SelectItem>
-                          <SelectItem value="Manutenção">Manutenção</SelectItem>
-                          <SelectItem value="Peças">Peças</SelectItem>
-                          <SelectItem value="Combustível">Combustível</SelectItem>
-                          <SelectItem value="Mão de Obra">Mão de Obra</SelectItem>
-                          <SelectItem value="Retirada de Sócios">Retirada</SelectItem>
-                          <SelectItem value="Venda">Venda</SelectItem>
-                          <SelectItem value="Outros">Outros</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {!row.isInvalid && (
-                      <Select value={row.crop} onValueChange={(val) => onCropChange(i, val)}>
-                        <SelectTrigger className="h-7 text-[10px] w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Soja">Soja</SelectItem>
-                          <SelectItem value="Milho">Milho</SelectItem>
-                          <SelectItem value="Cana">Cana</SelectItem>
-                          <SelectItem value="Geral">Geral</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right whitespace-nowrap text-xs font-medium">
-                    {row.isInvalid ? (
-                      <span className="text-destructive" title={`Valor original: ${row.rawAmt}`}>
-                        {row.rawAmt || 'Vazio'}
-                      </span>
-                    ) : (
-                      <span
-                        className={
-                          row.type === 'receita'
-                            ? 'text-green-600 dark:text-green-500'
-                            : row.type === 'despesa'
-                              ? 'text-destructive'
-                              : 'text-muted-foreground'
-                        }
-                      >
-                        {row.type === 'despesa' ? '-' : row.type === 'receita' ? '+' : ''}{' '}
-                        {formatBRL(Math.abs(row.amount))}
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {row.isInvalid ? (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Badge
-                            variant="destructive"
-                            className="text-[10px] h-5 gap-1 cursor-help truncate max-w-[120px]"
+                          <SelectTrigger
+                            className={`h-7 text-[10px] w-full ${row.type === 'indefinido' ? 'border-orange-500 ring-orange-500 ring-1' : ''}`}
                           >
-                            <AlertCircle className="h-3 w-3 shrink-0" /> Erro
-                          </Badge>
-                        </TooltipTrigger>
-                        <TooltipContent className="bg-destructive text-destructive-foreground">
-                          <p>{row.errorMsg}</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    ) : row.isDuplicate ? (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Badge
-                            variant="outline"
-                            className="bg-orange-100 text-orange-800 border-orange-300 text-[10px] h-5 cursor-help gap-1 dark:bg-orange-950 dark:text-orange-400 dark:border-orange-800"
-                          >
-                            <HelpCircle className="h-3 w-3 shrink-0" /> Duplicado
-                          </Badge>
-                        </TooltipTrigger>
-                        <TooltipContent className="max-w-[250px]">
-                          <p className="text-sm font-semibold mb-1">Registro Ignorado</p>
-                          <p className="text-xs text-muted-foreground">
-                            {row.duplicateReason || 'Já existe um registro idêntico no sistema.'}
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                    ) : row.type === 'indefinido' ? (
-                      <Badge
-                        variant="outline"
-                        className="bg-yellow-100 text-yellow-800 border-yellow-300 text-[10px] h-5 dark:bg-yellow-950 dark:text-yellow-400 dark:border-yellow-800"
-                      >
-                        Requer Atenção
-                      </Badge>
-                    ) : (
-                      <Badge
-                        variant="outline"
-                        className="bg-green-100 text-green-800 border-green-300 text-[10px] h-5 dark:bg-green-950 dark:text-green-400 dark:border-green-800"
-                      >
-                        Pronto
-                      </Badge>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
+                            <SelectValue placeholder="Tipo" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="despesa">Despesa</SelectItem>
+                            <SelectItem value="receita">Receita</SelectItem>
+                            <SelectItem value="indefinido">Indefinido</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {!row.isInvalid && (
+                        <Select
+                          value={row.cat}
+                          onValueChange={(val) => onCategoryChange(row.index, val)}
+                        >
+                          <SelectTrigger className="h-7 text-[10px] w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Insumos">Insumos</SelectItem>
+                            <SelectItem value="Manutenção">Manutenção</SelectItem>
+                            <SelectItem value="Peças">Peças</SelectItem>
+                            <SelectItem value="Combustível">Combustível</SelectItem>
+                            <SelectItem value="Mão de Obra">Mão de Obra</SelectItem>
+                            <SelectItem value="Retirada de Sócios">Retirada</SelectItem>
+                            <SelectItem value="Venda">Venda</SelectItem>
+                            <SelectItem value="Outros">Outros</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {!row.isInvalid && (
+                        <Select
+                          value={row.crop}
+                          onValueChange={(val) => onCropChange(row.index, val)}
+                        >
+                          <SelectTrigger className="h-7 text-[10px] w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Soja">Soja</SelectItem>
+                            <SelectItem value="Milho">Milho</SelectItem>
+                            <SelectItem value="Cana">Cana</SelectItem>
+                            <SelectItem value="Geral">Geral</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right whitespace-nowrap text-xs font-medium">
+                      {row.isInvalid ? (
+                        <span className="text-destructive" title={`Valor original: ${row.rawAmt}`}>
+                          {row.rawAmt || 'Vazio'}
+                        </span>
+                      ) : (
+                        <span
+                          className={
+                            row.type === 'receita'
+                              ? 'text-green-600 dark:text-green-500'
+                              : row.type === 'despesa'
+                                ? 'text-destructive'
+                                : 'text-muted-foreground'
+                          }
+                        >
+                          {row.type === 'despesa' ? '-' : row.type === 'receita' ? '+' : ''}{' '}
+                          {formatBRL(Math.abs(row.amount))}
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {row.isInvalid ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge
+                              variant="destructive"
+                              className="text-[10px] h-5 gap-1 cursor-help truncate max-w-[120px]"
+                            >
+                              <AlertCircle className="h-3 w-3 shrink-0" /> Erro
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent className="bg-destructive text-destructive-foreground">
+                            <p>{row.errorMsg}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : row.isDuplicate ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge
+                              variant="outline"
+                              className="bg-orange-100 text-orange-800 border-orange-300 text-[10px] h-5 cursor-help gap-1 dark:bg-orange-950 dark:text-orange-400 dark:border-orange-800"
+                            >
+                              <HelpCircle className="h-3 w-3 shrink-0" /> Duplicado
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-[250px]">
+                            <p className="text-sm font-semibold mb-1">Registro Ignorado</p>
+                            <p className="text-xs text-muted-foreground">
+                              {row.duplicateReason || 'Já existe um registro idêntico no sistema.'}
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : row.type === 'indefinido' ? (
+                        <Badge
+                          variant="outline"
+                          className="bg-yellow-100 text-yellow-800 border-yellow-300 text-[10px] h-5 dark:bg-yellow-950 dark:text-yellow-400 dark:border-yellow-800"
+                        >
+                          Requer Atenção
+                        </Badge>
+                      ) : (
+                        <Badge
+                          variant="outline"
+                          className="bg-green-100 text-green-800 border-green-300 text-[10px] h-5 dark:bg-green-950 dark:text-green-400 dark:border-green-800"
+                        >
+                          Pronto
+                        </Badge>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
             </TableBody>
           </Table>
         </TooltipProvider>

@@ -113,11 +113,16 @@ export default function Financeiro() {
   })
 
   filteredTransactions.sort((a, b) => {
-    if (a.type === 'indefinido' && b.type !== 'indefinido') return -1
-    if (a.type !== 'indefinido' && b.type === 'indefinido') return 1
     const dateA = new Date(a.date).getTime()
     const dateB = new Date(b.date).getTime()
-    return sortOrder === 'desc' ? dateB - dateA : dateA - dateB
+    if (dateA !== dateB) {
+      return sortOrder === 'desc' ? dateB - dateA : dateA - dateB
+    }
+
+    // Fallback if dates are identical
+    if (a.type === 'indefinido' && b.type !== 'indefinido') return -1
+    if (a.type !== 'indefinido' && b.type === 'indefinido') return 1
+    return 0
   })
 
   const totalPages = Math.ceil(filteredTransactions.length / ITEMS_PER_PAGE) || 1

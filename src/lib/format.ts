@@ -7,6 +7,7 @@ export function formatBRL(value: number): string {
 
 export function formatDate(dateString: string): string {
   if (!dateString) return ''
+  if (dateString.includes('/')) return dateString
   const onlyDate = dateString.split('T')[0]
   const [year, month, day] = onlyDate.split('-')
   if (!year || !month || !day) return dateString
