@@ -42,6 +42,7 @@ import useAuthStore from '@/stores/useAuthStore'
 import useEquipmentStore from '@/stores/useEquipmentStore'
 import { useToast } from '@/hooks/use-toast'
 import { exportToCSV } from '@/lib/export'
+import { parseDateStr } from '@/lib/format'
 import { Transaction } from '@/types'
 
 const ITEMS_PER_PAGE = 10
@@ -93,8 +94,7 @@ export default function Financeiro() {
 
     let matchDate = true
     if (dateRange?.from) {
-      const [year, month, day] = t.date.split('T')[0].split('-').map(Number)
-      const txDate = new Date(year, month - 1, day)
+      const txDate = parseDateStr(t.date)
       txDate.setHours(0, 0, 0, 0)
 
       const from = new Date(dateRange.from)
@@ -113,8 +113,8 @@ export default function Financeiro() {
   })
 
   filteredTransactions.sort((a, b) => {
-    const dateA = new Date(a.date).getTime()
-    const dateB = new Date(b.date).getTime()
+    const dateA = parseDateStr(a.date).getTime()
+    const dateB = parseDateStr(b.date).getTime()
     if (dateA !== dateB) {
       return sortOrder === 'desc' ? dateB - dateA : dateA - dateB
     }
@@ -194,9 +194,9 @@ export default function Financeiro() {
           <PaginationLink
             onClick={() => setCurrentPage(i)}
             isActive={currentPage === i}
-            className="cursor-pointer"
+            className="cursor-pointer whitespace-nowrap"
           >
-            {i}
+            Folha {i}
           </PaginationLink>
         </PaginationItem>,
       )
@@ -337,6 +337,10 @@ export default function Financeiro() {
               </>
             )}
           </div>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-bold tracking-tight text-foreground">Folha {currentPage}</h2>
         </div>
 
         <TransactionTable
